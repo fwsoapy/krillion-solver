@@ -175,9 +175,23 @@ async function main() {
   // Build into a side folder and swap it in at the end, so a failed run never leaves data/ half written.
   const TMP = OUT + '.new';
   fs.rmSync(TMP, { recursive: true, force: true });
+  // The last build, so a day never goes backwards when a source is down or blocks us.
+  const prevIndex = fs.existsSync(path.join(OUT, 'index.json')) ? JSON.parse(fs.readFileSync(path.join(OUT, 'index.json'), 'utf8')) : [];
+  const previous = d => {
+    const es = prevIndex.filter(e => e.d === d);
+    if (es.length !== 7) return null;
+    return es.map(e => ({ ...JSON.parse(fs.readFileSync(path.join(OUT, d, `p${e.p}.json`), 'utf8')), ...(e.a ? { alt: e.a } : {}) }));
+  };
+  const total = ps => ps.reduce((s, p) => s + IDS.reduce((n, id) => n + p.tiers[id].length, 0), 0);
   for (let d = FIRST_DAY; d <= today; d = addDays(d, 1)) {
     const fresh = d >= addDays(today, -1);
-    const prompts = await buildDay(d, fresh, freq);
+    let prompts = null;
+    try { prompts = await buildDay(d, fresh, freq); } catch (e) { console.warn(`  ${d}: ${e.message}`); }
+    const prev = previous(d);
+    if (prev && (!prompts || total(prompts) < total(prev))) {
+      console.warn(`  ${d}: sources gave ${prompts ? total(prompts) : 'no'} answers, the last build had ${total(prev)}; keeping the last build`);
+      prompts = prev;
+    }
     if (!prompts) { console.warn(`  ${d}: not published yet`); continue; }
     days++;
     fs.mkdirSync(path.join(TMP, d), { recursive: true });
