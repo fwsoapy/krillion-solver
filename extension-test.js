@@ -63,6 +63,8 @@
       repeats += tries.filter(l => l.repeat).length;
     });
     check('every answer inside the tier range', outOfRange === 0, `${outOfRange} outside`);
+    const caps = game.log.filter(l => l.v !== l.v.toLowerCase()).length;
+    check('types everything in lowercase', caps === 0, `${caps} with capitals`);
     check('never repeats an answer when mistakes are off', repeats === 0, `${repeats} repeats`);
 
     // 2. Mistakes on: typos get fixed, rare repeats, never the answer just said.
@@ -111,7 +113,35 @@
     check('tries again after being turned down', retried, `${game.log.slice(n).length} tries`);
     turn('s1'); await wait(300);
 
-    // 6. Auto queue clicks Play again once, and never New table.
+    // 6. Pre-type: types an answer while someone else holds the puffer, swaps it when they say it, sends it fast on your turn.
+    set('pretype', true); set('mistakes', false); set('speed', 5);
+    turn('s1');
+    const onSheet = v => !!v && KrMatch.TIERS.some(t => (game.sheet.tiers[t.id] || []).some(a => a.toLowerCase() === v));
+    const settled = async () => { let last = '', since = performance.now(); return waitFor(() => { if (box.value !== last) { last = box.value; since = performance.now(); } return onSheet(box.value) && performance.now() - since > 600; }, 10000); };
+    const pre1 = await settled() && box.value;
+    check('pre-type fills the box before your turn', !!pre1 && !document.querySelector('#me.hold'), pre1 ? `"${pre1}"` : 'box stayed empty');
+    if (pre1) {
+      const tier = KrMatch.TIERS.find(t => (game.sheet.tiers[t.id] || []).some(a => a.toLowerCase() === pre1)).id;
+      game.used.add(KrMatch.norm(pre1)); game.said.push(pre1); say('s1', pre1, tier); // someone else says it first
+      await waitFor(() => box.value !== pre1, 5000);
+      const pre2 = await settled() && box.value;
+      check('pre-type swaps the answer when someone says it first', !!pre2 && pre2 !== pre1, pre2 ? `"${pre1}" became "${pre2}"` : 'no new answer');
+      const k = game.log.length, t0 = performance.now();
+      turn('me');
+      const sent = await waitFor(() => game.log.slice(k).some(l => l.ok), 8000);
+      const l = game.log.slice(k).find(x => x.ok);
+      check('pre-typed answer goes out fast on your turn', sent && l.v === pre2 && l.t - t0 < 1500, sent ? `"${l.v}" in ${((l.t - t0) / 1000).toFixed(2)}s` : 'nothing sent');
+      turn('s1'); await wait(300);
+    }
+    set('pretype', false);
+
+    // 7. Clicking an answer in the panel means you're taking over: auto answer switches off.
+    set('auto', true);
+    R().querySelector('.c').click();
+    check('clicking an answer switches auto answer off', !R().getElementById('auto').checked);
+    box.value = ''; set('auto', true);
+
+    // 8. Auto queue clicks Play again once, and never New table.
     set('auto', false); set('queue', true);
     const [again, table] = document.querySelectorAll('.ds-next-btn');
     again.hidden = table.hidden = false;
@@ -123,7 +153,7 @@
     check('auto queue clicks it only once and never New table', clicks.length === 1 && !clicks.some(k => /table/i.test(k.text)), `${clicks.length} clicks`);
     again.hidden = table.hidden = true; set('queue', false); set('auto', true);
 
-    // 7. Hidden tab: put another tab in front within 20 seconds.
+    // 9. Hidden tab: put another tab in front within 20 seconds.
     line('Waiting up to 20s for this tab to be hidden (open another tab in front)...');
     if (await waitFor(() => document.hidden, 20000)) {
       const times = await round('hidden tab, 10 turns', 10);

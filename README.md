@@ -15,6 +15,8 @@ It covers every daily dive since dive #1 on July 16, 2026.
 - **Crosses off used answers.** In Puffer Party it watches the other players' bubbles and hides every answer someone already gave. Yours drop off when you press Enter.
 - **Learns party prompts.** Party mode has prompts the daily dive never used. The extension saves every accepted answer it sees, with its tier, so the next time that prompt comes up you get a list.
 - **Auto answer** (off by default). On your turn it picks a random unused answer from the tier range you set, types it one key at a time at the speed you pick, and presses Enter. A new question stays up 2 seconds before it starts typing, so you can read it. Switch on "Make mistakes" and it makes typos it backspaces and fixes, and now and then tries an answer said earlier (never the one just said). Keep it to unrated rooms: in rated ones you move other people's ratings.
+- **Pre-type** (party, off by default) types your next answer while someone else holds the puffer, so it goes out the moment the puffer reaches you. If another player says that answer first, it deletes it and types a new one.
+- Auto answer types in lowercase. Type in the game's box yourself, or click an answer in the panel, and auto answer switches off on the spot.
 - **Auto queue** (off by default) clicks Play again when a party game ends.
 - It keeps working in a background tab or a minimized window. Chrome slows a hidden tab's timers, so the extension times its typing from its background worker instead.
 - Click any answer to type it into the game's box.

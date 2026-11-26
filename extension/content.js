@@ -27,7 +27,7 @@ let filter = '', closed = false, collapsed = false, opened = false, busy = false
 let used = new Map();                                    // norm(answer) -> answer as said
 let stale = new WeakMap();                               // bubble -> its text when the prompt changed (left over, not about this prompt)
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
-let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false }; // from/to index LOW_TO_HIGH
+let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false }; // from/to index LOW_TO_HIGH
 let promptAt = 0;                                        // when the current question appeared
 const shown = {};                                        // tier id -> answers shown
 
@@ -165,8 +165,9 @@ root.innerHTML = `<style>
       <span class="lbl">Typing speed <b id="spv"></b></span>
       <input type="range" class="one" id="speed" min="1" max="5" step="1" aria-label="Typing speed, 1 slow to 5 fast">
     </div>
-    <label class="sw">Make mistakes (typos, rare repeats)<input type="checkbox" role="switch" id="mistakes"></label>
-    <label class="sw">Auto queue (clicks Play again)<input type="checkbox" role="switch" id="queue"></label>
+    <label class="sw">Pre-type<input type="checkbox" role="switch" id="pretype"></label>
+    <label class="sw">Make mistakes<input type="checkbox" role="switch" id="mistakes"></label>
+    <label class="sw">Auto queue<input type="checkbox" role="switch" id="queue"></label>
     <p class="st" id="st" aria-live="polite"></p>
   </div>
   <div class="body" id="body"></div>
@@ -222,7 +223,7 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 
 function showSettings() {
-  $('auto').checked = settings.auto; $('mistakes').checked = settings.mistakes; $('queue').checked = settings.queue;
+  for (const id of ['auto', 'pretype', 'mistakes', 'queue']) $(id).checked = settings[id];
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   $('from').value = settings.from; $('to').value = settings.to;
   $('range').style.setProperty('--lo', lo); $('range').style.setProperty('--hi', hi);
@@ -235,7 +236,7 @@ function showSettings() {
   status(settings.auto ? 'On. Waits for your turn.' : 'Off. Click any answer to type it in yourself.');
 }
 const status = text => { if ($('st').textContent !== text) $('st').textContent = text; };
-for (const id of ['auto', 'mistakes', 'queue']) $(id).onchange = () => { settings[id] = $(id).checked; save(); showSettings(); };
+for (const id of ['auto', 'pretype', 'mistakes', 'queue']) $(id).onchange = () => { settings[id] = $(id).checked; save(); showSettings(); };
 for (const id of ['from', 'to', 'speed']) $(id).oninput = () => { settings[id] = +$(id).value; save(); showSettings(); };
 // Clicking a tier icon moves the nearer handle to it.
 root.querySelector('.ricons').onclick = ev => {
@@ -265,6 +266,7 @@ function myTurnBox() {
 }
 // Click an answer: put it in the answer box (you still press Enter) and copy it.
 function useAnswer(text) {
+  takeOver('you picked an answer');
   const box = gameInput();
   if (box && !box.disabled) {
     setVal(box, text);
@@ -374,7 +376,7 @@ function scan() {
   const text = readPrompt();
   let changed = false;
   if (text && text !== promptText && INDEX) {
-    promptText = text; promptAt = Date.now(); used = new Map(); filter = ''; for (const k in shown) delete shown[k];
+    promptText = text; promptAt = Date.now(); used = new Map(); filter = ''; pending = null; for (const k in shown) delete shown[k];
     stale = new WeakMap();
     for (const el of document.querySelectorAll('.pf-say')) stale.set(el, el.textContent.trim());
     const best = search(INDEX, text, 1)[0];
@@ -393,6 +395,7 @@ function scan() {
 // Your own answer: what's in the game's box when Enter goes down (yours or auto answer's).
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' || !promptText || !ev.target.matches || !ev.target.matches('input.ds-input')) return;
+  if (ev.isTrusted) takeOver('you sent an answer yourself');
   const said = ev.target.value.trim(), k = norm(said);
   if (k && !used.has(k)) { used.set(k, said); setTimeout(draw, 0); }
 }, true);
@@ -445,7 +448,7 @@ async function typeOut(box, text, still) {
   }
   return still();
 }
-async function clearBox(box) { while (box.value) { press(box, 'Backspace'); await sleep(keyMs() * 0.5); } }
+async function clearBox(box, still = () => true) { while (box.value && still()) { press(box, 'Backspace'); await sleep(keyMs() * 0.5); } }
 
 // A random unused answer: a random tier from the range that has some left, then a random answer in it (short ones first).
 function chooseAnswer() {
@@ -461,32 +464,45 @@ function chooseAnswer() {
   return rand(short.length ? short : pool);
 }
 
+const think = () => THINK_MS[settings.speed - 1] * (0.7 + Math.random() * 0.6);
+const isParty = () => !!document.querySelector('.pf-root');
+
 async function autoAnswer(box) {
-  const p = promptText, still = () => myTurnBox() === box && readPrompt() === p;
-  // A short think, but never before the question has been up READ_MS, so you can read it first.
-  const think = THINK_MS[settings.speed - 1] * (0.7 + Math.random() * 0.6);
-  await sleep(Math.max(think, promptAt + READ_MS + Math.random() * 400 - Date.now()));
+  const p = promptText, still = () => settings.auto && myTurnBox() === box && readPrompt() === p;
+  const ready = pending && !used.has(norm(pending)) ? pending.toLowerCase() : null;
+  const preTyped = ready && box.value && ready.startsWith(box.value); // pre-type got all or part of it in already
+  // A short think (shorter when it's already typed), but never before the question has been up READ_MS, so you can read it.
+  await sleep(Math.max(preTyped ? think() * 0.4 : think(), promptAt + READ_MS + Math.random() * 400 - Date.now()));
   if (!still() || !sheet) return;
   box.focus();
-  if (box.value) await clearBox(box);
-  const repeats = [...used.values()].slice(0, -2); // never the answer that was just said
-  if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then: try something said earlier, get turned down, move on
-    const r = rand(repeats);
-    status(`Mistake on purpose: "${r}" was already said.`);
-    if (!await typeOut(box, r, still)) return;
-    pressEnter(box);
-    await sleep(900 + Math.random() * 400);
-    if (!still()) return;
-    await clearBox(box);
+  let answer;
+  if (preTyped && ready.startsWith(box.value)) {
+    answer = pending;
+    status(`Sending pre-typed "${ready}"`);
+    if (!await typeOut(box, ready.slice(box.value.length), still)) return; // finish it if pre-type got cut off
+  } else {
+    pending = null;
+    if (box.value) await clearBox(box, still);
+    const repeats = [...used.values()].slice(0, -2); // never the answer that was just said
+    if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then: try something said earlier, get turned down, move on
+      const r = rand(repeats).toLowerCase();
+      status(`Mistake on purpose: "${r}" was already said.`);
+      if (!await typeOut(box, r, still)) return;
+      pressEnter(box);
+      await sleep(900 + Math.random() * 400);
+      if (!still()) return;
+      await clearBox(box, still);
+    }
+    answer = chooseAnswer();
+    if (!answer) { status('No unused answers known for this prompt. Type one yourself.'); return; }
+    status(`Typing "${answer.toLowerCase()}"`);
+    if (!await typeOut(box, answer.toLowerCase(), still)) return;
   }
-  const answer = chooseAnswer();
-  if (!answer) { status('No unused answers known for this prompt. Type one yourself.'); return; }
-  status(`Typing "${answer}"`);
-  if (!await typeOut(box, answer, still)) return;
   await sleep(keyMs() * 2);
   if (!still()) return;
+  pending = null;
   pressEnter(box);
-  status(`Sent "${answer}". Waiting for your next turn.`);
+  status(`Sent "${answer.toLowerCase()}". Waiting for your next turn.`);
   // Wait for the game's verdict, up to 1.5 s: the puffer moves on, or your bubble shows the answer turned down.
   const said = answer.toLowerCase();
   const turnedDown = () => { const b = document.querySelector('.pf-seat.me .pf-say.bad'); return !!b && b.textContent.trim().toLowerCase() === said; };
@@ -504,15 +520,56 @@ function autoQueue() {
   status('Clicked Play again.');
 }
 
+// Pre-type (party only): while someone else holds the puffer, keep one unused answer typed in the box, ready to send.
+// If someone says it first, delete it and type another.
+let pending = null, pretypeBlocked = '';
+async function pretype(box) {
+  const p = promptText, still = () => settings.auto && settings.pretype && readPrompt() === p && gameInput() === box && !myTurnBox();
+  const want = pending && !used.has(norm(pending)) ? pending.toLowerCase() : null;
+  if (want && box.value === want) return; // ready
+  if (box.value) {
+    if (pending) status(`"${pending.toLowerCase()}" was just said. Typing another.`);
+    await clearBox(box, still);
+    if (!still()) return;
+  }
+  pending = chooseAnswer();
+  if (!pending) return;
+  await sleep(think());
+  if (!still()) return;
+  status(`Pre-typing "${pending.toLowerCase()}"`);
+  const target = pending.toLowerCase();
+  const done = await typeOut(box, target, still);
+  // The game may not keep text typed before your turn; then stop trying for this question.
+  if (done && box.value !== target) { pretypeBlocked = p; pending = null; status('The game clears the box before your turn here, so pre-type is paused for this question.'); }
+  else if (done) status(`Pre-typed "${target}". Sends on your turn.`);
+}
+
 function tick() {
   if (settings.queue) autoQueue();
   if (!settings.auto || busy) return;
   const box = myTurnBox();
-  if (!box) return;
-  if (!sheet) { status('Your turn, but the answer list is still loading.'); return; }
-  busy = true;
-  autoAnswer(box).catch(() => {}).finally(() => { busy = false; });
+  if (box) {
+    if (!sheet) { status('Your turn, but the answer list is still loading.'); return; }
+    busy = true;
+    autoAnswer(box).catch(() => {}).finally(() => { busy = false; });
+    return;
+  }
+  const early = settings.pretype && isParty() && sheet && gameInput();
+  if (early && !early.disabled && pretypeBlocked !== promptText && Date.now() - promptAt >= READ_MS) {
+    busy = true;
+    pretype(early).catch(() => {}).finally(() => { busy = false; });
+  }
 }
+
+// You take over: typing in the game's box yourself, or clicking an answer, switches auto answer off.
+// (Auto answer's own key presses are made by script, so the browser marks them untrusted and they don't count.)
+function takeOver(why) {
+  if (!settings.auto) return;
+  settings.auto = false; pending = null;
+  save(); showSettings();
+  status(`Auto answer is off: ${why}.`);
+}
+document.addEventListener('input', ev => { if (ev.isTrusted && ev.target.matches && ev.target.matches('input.ds-input')) takeOver('you typed'); }, true);
 
 // ---- start ----
 // One loop reads the page and runs auto answer and auto queue, about 7 times a second, hidden tab included.
