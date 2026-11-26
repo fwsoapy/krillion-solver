@@ -154,7 +154,7 @@ async function buildDay(date, fresh, freq) {
     try { popular = parseTwfPopular(await get(`twf/${date}.html`, `https://www.thewordfinder.com/misc-solvers/krillion-answers/${date}/`, fresh)); }
     catch (e) { console.warn(`  ${date}: no most-typed counts (${e.message})`); }
   }
-  return main.map((p, i) => {
+  const list = main.map((p, i) => {
     // Same day, same slot: the same prompt, even when a source words it a little differently.
     const other = mc.length === main.length ? mc[i] : null;
     if (other && score(other.text, p.text) < 0.6) console.warn(`  ${date} p${i + 1}: check wording: "${p.text}" vs "${other.text}"`);
@@ -162,6 +162,8 @@ async function buildDay(date, fresh, freq) {
     if (other && norm(other.text) !== norm(p.text)) out.alt = other.text; // the game may show either wording
     return out;
   });
+  list.missingCounts = date >= TWF_FIRST && popular.length !== main.length; // ordered without the most-typed counts
+  return list;
 }
 
 async function main() {
@@ -190,6 +192,9 @@ async function main() {
     const prev = previous(d);
     if (prev && (!prompts || total(prompts) < total(prev))) {
       console.warn(`  ${d}: sources gave ${prompts ? total(prompts) : 'no'} answers, the last build had ${total(prev)}; keeping the last build`);
+      prompts = prev;
+    } else if (prev && prompts.missingCounts && total(prompts) === total(prev)) {
+      console.warn(`  ${d}: no most-typed counts this time; keeping the last build's order`);
       prompts = prev;
     }
     if (!prompts) { console.warn(`  ${d}: not published yet`); continue; }
