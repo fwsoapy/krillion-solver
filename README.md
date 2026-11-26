@@ -16,6 +16,7 @@ It covers every daily dive since dive #1 on July 16, 2026.
 - **Learns party prompts.** Party mode has prompts the daily dive never used. The extension saves every accepted answer it sees, with its tier, so the next time that prompt comes up you get a list.
 - **Auto answer** (off by default). On your turn it picks a random unused answer from the tier range you set, types it one key at a time at the speed you pick, and presses Enter. Switch on "Make mistakes" and it sometimes makes a typo and fixes it, or tries an answer someone already said. Keep it to unrated rooms: in rated ones you move other people's ratings.
 - Click any answer to type it into the game's box.
+- Drag the panel by its title bar. Double-click the title to put it back.
 
 To install it:
 

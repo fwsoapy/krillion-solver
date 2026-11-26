@@ -52,7 +52,9 @@ root.innerHTML = `<style>
   button, input, select { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
   img { image-rendering: pixelated; }
-  .bar { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; border-bottom: 1px solid var(--line); }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; border-bottom: 1px solid var(--line); cursor: grab; touch-action: none; user-select: none; }
+  .p.drag { box-shadow: 0 24px 60px rgba(0,0,0,.65); }
+  .p.drag .bar { cursor: grabbing; }
   .bar img { width: 26px; height: 26px; }
   .bar b { font: 400 22px/1 var(--pixel); flex: 1; }
   .bar b span { color: var(--krillion); }
@@ -136,7 +138,7 @@ root.innerHTML = `<style>
 <div class="p" hidden>
   <div class="bar">
     <img src="${ICON('krillion')}" alt="">
-    <b>Krillion <span>Solver</span></b>
+    <b title="Drag to move. Double-click to put it back.">Krillion <span>Solver</span></b>
     <button class="ib" id="min" type="button" aria-label="Collapse" title="Collapse"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 12h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
     <button class="ib" id="x" type="button" aria-label="Close (the toolbar icon opens it again)" title="Close"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button>
   </div>
@@ -168,6 +170,40 @@ for (const t of ['keydown', 'keyup', 'keypress']) host.addEventListener(t, ev =>
 
 $('x').onclick = () => { closed = true; panel.hidden = true; };
 $('min').onclick = () => { collapsed = !collapsed; panel.classList.toggle('min', collapsed); };
+
+// Drag the panel by its title bar. It remembers where you left it and stays on screen when the window shrinks.
+function place(pos) {
+  if (!pos) { panel.style.left = panel.style.top = panel.style.right = panel.style.maxHeight = ''; return; }
+  const w = panel.offsetWidth || 330;
+  panel.style.left = Math.min(Math.max(0, pos.x), innerWidth - w) + 'px';
+  const top = Math.min(Math.max(0, pos.y), innerHeight - 44);
+  panel.style.top = top + 'px';
+  panel.style.maxHeight = `calc(100vh - ${top + 16}px)`; // shrink to fit below where you dropped it
+  panel.style.right = 'auto';
+}
+const bar = root.querySelector('.bar');
+let drag = null;
+bar.addEventListener('pointerdown', ev => {
+  if (ev.button !== 0 || ev.target.closest('button')) return;
+  const r = panel.getBoundingClientRect();
+  drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
+  bar.setPointerCapture(ev.pointerId);
+  panel.classList.add('drag');
+  ev.preventDefault();
+});
+bar.addEventListener('pointermove', ev => { if (drag) place({ x: ev.clientX - drag.dx, y: ev.clientY - drag.dy }); });
+const drop = () => {
+  if (!drag) return;
+  drag = null;
+  panel.classList.remove('drag');
+  const r = panel.getBoundingClientRect();
+  settings.pos = { x: Math.round(r.left), y: Math.round(r.top) };
+  save();
+};
+bar.addEventListener('pointerup', drop);
+bar.addEventListener('pointercancel', drop);
+bar.addEventListener('dblclick', ev => { if (ev.target.closest('button')) return; settings.pos = null; place(null); save(); });
+addEventListener('resize', () => place(settings.pos));
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type !== 'toggle') return;
   closed = !closed && !panel.hidden;
@@ -258,7 +294,9 @@ function learn(answer, tier) {
 // ---- drawing ----
 function draw() {
   if (closed) return;
+  const was = panel.hidden;
   panel.hidden = !promptText && !opened; // opens by itself once a prompt is on screen
+  if (was && !panel.hidden) place(settings.pos); // its width is known now
   if (!promptText) { body.innerHTML = '<p class="msg">Waiting for a prompt. Start a dive or a party round.</p>'; return; }
   if (!INDEX || !sheet) { body.innerHTML = `<p class="q">${esc(promptText)}</p><p class="msg">Loading answers…</p>`; return; }
 
@@ -462,6 +500,7 @@ chrome.storage.local.get(['settings', 'learned']).then(s => {
   if (s.settings) settings = { ...settings, ...s.settings };
   if (s.learned) learned = s.learned;
   showSettings();
+  place(settings.pos);
   return ask({ type: 'index' });
 }).then(idx => { INDEX = idx; scan(); draw(); }, () => {
   body.innerHTML = '<p class="msg">Could not load the answer archive. Reload the extension.</p>';
