@@ -1,7 +1,7 @@
 // node test.js: matching, merging and parsing, then checks every data file.
 const assert = require('assert'), fs = require('fs'), path = require('path');
 const { TIERS, norm, search, tierOf } = require('./match.js');
-const { parseMc, merge } = require('./update.js');
+const { parseMc, merge, familiarity, rankWith } = require('./update.js');
 let n = 0;
 const ok = (name, fn) => { fn(); n++; console.log('ok', name); };
 
@@ -43,6 +43,16 @@ ok('merge: main wins, extras add, gems promote, dupes drop', () => {
   assert.deepStrictEqual(m.deepcut, ['Macau']);
   assert.deepStrictEqual(m.plankton, ['Chile', 'Cuba']);
   assert.deepStrictEqual(Object.keys(m), TIERS.map(t => t.id));
+});
+
+ok('most common first: typed counts, then familiar words', () => {
+  const freq = new Map([['drill', 10000], ['saw', 300000], ['air', 50000], ['tool', 40000], ['powder', 10000], ['it', 9e6]]);
+  const fam = familiarity(freq);
+  assert(fam('Saw') > fam('Drill'));
+  assert(fam('Air tool') > fam('Powder-actuated tool'), 'an unknown word sinks the answer');
+  assert(fam('It') > fam('It (1967)'), 'a bracketed year marks the lesser-known one');
+  const rank = rankWith(freq, new Map([['drill', 500]]));
+  assert.deepStrictEqual(merge({ schooler: ['Air tool', 'Saw', 'Drill', 'Zzzyx'] }, null, rank).schooler, ['Drill', 'Saw', 'Air tool', 'Zzzyx']);
 });
 
 ok('parseMc', () => {

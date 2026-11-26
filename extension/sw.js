@@ -43,7 +43,9 @@ async function prompt(d, p) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
-  const job = msg.type === 'index' ? index() : msg.type === 'prompt' ? prompt(msg.d, msg.p) : null;
+  // "sleep": the panel's timer while its tab is hidden (Chrome slows a hidden tab's own timers, not this worker's).
+  const job = msg.type === 'index' ? index() : msg.type === 'prompt' ? prompt(msg.d, msg.p)
+    : msg.type === 'sleep' ? new Promise(r => setTimeout(() => r(true), Math.min(Math.max(+msg.ms || 0, 0), 10000))) : null;
   if (!job) return false;
   job.then(data => reply({ data }), err => reply({ error: String(err) }));
   return true; // reply comes later

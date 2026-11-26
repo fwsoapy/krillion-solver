@@ -5,3 +5,5 @@ extension/data/
 extension/match.js
 # local editor settings
 .claude/
+# half-built data while update.js runs
+data.new/

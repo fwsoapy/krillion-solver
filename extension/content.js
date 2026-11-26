@@ -5,16 +5,20 @@
 // - Party has prompts the daily archive doesn't. Every accepted answer seen in your games is saved with its tier (the
 //   bubble's --cc color), so a prompt you've seen before has a list next time.
 // - Auto answer (off until you switch it on): on your turn it picks a random unused answer from your tier range and types it
-//   one key at a time, then presses Enter. "Make mistakes" adds the odd typo it fixes, or first tries an answer already said.
+//   one key at a time, then presses Enter. It waits until a new question has been up 2 seconds. "Make mistakes" adds
+//   typos it fixes and, rarely, first tries an answer said earlier (never the latest ones).
+// - Auto queue (off until you switch it on): clicks "Play again" when a party game ends.
+// - Works in a hidden tab: waits go through the service worker, which Chrome doesn't slow down.
 (() => {
 if (globalThis.__krSolver) return;
 globalThis.__krSolver = true;
 const { TIERS, norm, promptKey, search } = KrMatch;
 const LOW_TO_HIGH = [...TIERS].reverse();                 // Plankton first: the order of the range pickers
 const SURE = 0.75;                                       // match score needed to pick an archive prompt by itself
-const FIRST = 40;                                        // answers shown per tier before "More"
+const FIRST = 20;                                        // answers shown per tier, and added by each "Show more"
 const KEY_MS = [300, 220, 160, 110, 70];                 // average time per key, speed 1 (slow) to 5 (fast)
 const THINK_MS = [1500, 1100, 750, 480, 260];            // pause before starting to type
+const READ_MS = 2000;                                    // a new question stays up this long before auto answer types
 const SHORT = 22;                                        // auto answer prefers answers this long or shorter (the puffer pops fast)
 const ICON = id => `https://krillion.io/tiers/${id}.png`;
 
@@ -23,14 +27,18 @@ let filter = '', closed = false, collapsed = false, opened = false, busy = false
 let used = new Map();                                    // norm(answer) -> answer as said
 let stale = new WeakMap();                               // bubble -> its text when the prompt changed (left over, not about this prompt)
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
-let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false }; // from/to index LOW_TO_HIGH
+let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false }; // from/to index LOW_TO_HIGH
+let promptAt = 0;                                        // when the current question appeared
 const shown = {};                                        // tier id -> answers shown
 
 const ask = msg => new Promise((ok, fail) => chrome.runtime.sendMessage(msg, r =>
   chrome.runtime.lastError ? fail(new Error(chrome.runtime.lastError.message)) : r && r.error ? fail(new Error(r.error)) : ok(r.data)));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const isShown = el => el.offsetParent !== null || el.getClientRects().length > 0;
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Chrome slows timers in a hidden tab to once a second or less, which would make typing crawl. The service worker
+// isn't slowed, so while this tab is hidden every wait goes through it.
+const localSleep = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => (document.hidden ? ask({ type: 'sleep', ms }).catch(() => localSleep(ms)) : localSleep(ms));
 const rand = a => a[Math.floor(Math.random() * a.length)];
 let saveTimer = 0;
 const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => chrome.storage.local.set({ settings, learned }), 400); };
@@ -157,7 +165,8 @@ root.innerHTML = `<style>
       <span class="lbl">Typing speed <b id="spv"></b></span>
       <input type="range" class="one" id="speed" min="1" max="5" step="1" aria-label="Typing speed, 1 slow to 5 fast">
     </div>
-    <label class="sw">Make mistakes (typos, repeats)<input type="checkbox" role="switch" id="mistakes"></label>
+    <label class="sw">Make mistakes (typos, rare repeats)<input type="checkbox" role="switch" id="mistakes"></label>
+    <label class="sw">Auto queue (clicks Play again)<input type="checkbox" role="switch" id="queue"></label>
     <p class="st" id="st" aria-live="polite"></p>
   </div>
   <div class="body" id="body"></div>
@@ -213,7 +222,7 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 
 function showSettings() {
-  $('auto').checked = settings.auto; $('mistakes').checked = settings.mistakes;
+  $('auto').checked = settings.auto; $('mistakes').checked = settings.mistakes; $('queue').checked = settings.queue;
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   $('from').value = settings.from; $('to').value = settings.to;
   $('range').style.setProperty('--lo', lo); $('range').style.setProperty('--hi', hi);
@@ -226,7 +235,7 @@ function showSettings() {
   status(settings.auto ? 'On. Waits for your turn.' : 'Off. Click any answer to type it in yourself.');
 }
 const status = text => { if ($('st').textContent !== text) $('st').textContent = text; };
-for (const id of ['auto', 'mistakes']) $(id).onchange = () => { settings[id] = $(id).checked; save(); showSettings(); };
+for (const id of ['auto', 'mistakes', 'queue']) $(id).onchange = () => { settings[id] = $(id).checked; save(); showSettings(); };
 for (const id of ['from', 'to', 'speed']) $(id).oninput = () => { settings[id] = +$(id).value; save(); showSettings(); };
 // Clicking a tier icon moves the nearer handle to it.
 root.querySelector('.ricons').onclick = ev => {
@@ -325,7 +334,7 @@ function draw() {
       return `<section class="t" style="--t:var(--${t.id})">
         <h3><img src="${ICON(t.id)}" alt="">${t.name}<em>${t.score} pts</em></h3>
         <div class="chips">${all.slice(0, n).map(a => `<button type="button" class="c" data-a="${esc(a)}">${esc(a)}</button>`).join('')}</div>
-        ${all.length > n ? `<button type="button" class="more" data-more="${t.id}">Show ${Math.min(all.length - n, 200)} more</button>` : ''}
+        ${all.length > n ? `<button type="button" class="more" data-more="${t.id}">Show more</button>` : ''}
       </section>`;
     }).join('')}`;
   const box = $('f');
@@ -339,7 +348,7 @@ body.addEventListener('click', ev => {
   const a = ev.target.closest('[data-a]');
   if (a) return useAnswer(a.dataset.a);
   const m = ev.target.closest('[data-more]');
-  if (m) { shown[m.dataset.more] = (shown[m.dataset.more] || FIRST) + 200; draw(); }
+  if (m) { shown[m.dataset.more] = (shown[m.dataset.more] || FIRST) + FIRST; draw(); }
 });
 
 // Use an archive prompt's answers for what's on screen.
@@ -365,7 +374,7 @@ function scan() {
   const text = readPrompt();
   let changed = false;
   if (text && text !== promptText && INDEX) {
-    promptText = text; used = new Map(); filter = ''; for (const k in shown) delete shown[k];
+    promptText = text; promptAt = Date.now(); used = new Map(); filter = ''; for (const k in shown) delete shown[k];
     stale = new WeakMap();
     for (const el of document.querySelectorAll('.pf-say')) stale.set(el, el.textContent.trim());
     const best = search(INDEX, text, 1)[0];
@@ -421,7 +430,7 @@ function pressEnter(box) {
 // Types text key by key. Returns false if the turn ended or the prompt changed.
 async function typeOut(box, text, still) {
   const letters = [...text].map((c, i) => (i > 0 && nearKey(c) ? i : -1)).filter(i => i >= 0);
-  const typoAt = settings.mistakes && letters.length && Math.random() < 0.3 ? rand(letters) : -1;
+  const typoAt = settings.mistakes && letters.length && Math.random() < 0.45 ? rand(letters) : -1;
   for (let i = 0; i < text.length; i++) {
     if (i === typoAt) {
       press(box, nearKey(text[i]));
@@ -454,12 +463,14 @@ function chooseAnswer() {
 
 async function autoAnswer(box) {
   const p = promptText, still = () => myTurnBox() === box && readPrompt() === p;
-  await sleep(THINK_MS[settings.speed - 1] * (0.7 + Math.random() * 0.6));
+  // A short think, but never before the question has been up READ_MS, so you can read it first.
+  const think = THINK_MS[settings.speed - 1] * (0.7 + Math.random() * 0.6);
+  await sleep(Math.max(think, promptAt + READ_MS + Math.random() * 400 - Date.now()));
   if (!still() || !sheet) return;
   box.focus();
   if (box.value) await clearBox(box);
-  const repeats = [...used.values()];
-  if (settings.mistakes && repeats.length && Math.random() < 0.15) { // try something already said, get turned down, move on
+  const repeats = [...used.values()].slice(0, -2); // never the answer that was just said
+  if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then: try something said earlier, get turned down, move on
     const r = rand(repeats);
     status(`Mistake on purpose: "${r}" was already said.`);
     if (!await typeOut(box, r, still)) return;
@@ -476,25 +487,41 @@ async function autoAnswer(box) {
   if (!still()) return;
   pressEnter(box);
   status(`Sent "${answer}". Waiting for your next turn.`);
-  await sleep(1200);
+  // Wait for the game's verdict, up to 1.5 s: the puffer moves on, or your bubble shows the answer turned down.
+  const said = answer.toLowerCase();
+  const turnedDown = () => { const b = document.querySelector('.pf-seat.me .pf-say.bad'); return !!b && b.textContent.trim().toLowerCase() === said; };
+  for (let i = 0; i < 10 && still() && !turnedDown(); i++) await sleep(150);
 }
-setInterval(() => {
+// Auto queue: when a party game ends, click "Play again" after a moment.
+let queueAt = 0;
+function autoQueue() {
+  const btn = [...document.querySelectorAll('button.ds-next-btn')].find(b => isShown(b) && !b.disabled && /play again/i.test(b.textContent));
+  if (!btn) { queueAt = 0; return; }
+  if (!queueAt) { queueAt = Date.now() + 1500 + Math.random() * 1500; status('Game over. Queuing again in a moment.'); return; }
+  if (Date.now() < queueAt) return;
+  queueAt = Date.now() + 5000; // one click, then wait for the page to move on
+  btn.click();
+  status('Clicked Play again.');
+}
+
+function tick() {
+  if (settings.queue) autoQueue();
   if (!settings.auto || busy) return;
   const box = myTurnBox();
   if (!box) return;
   if (!sheet) { status('Your turn, but the answer list is still loading.'); return; }
   busy = true;
   autoAnswer(box).catch(() => {}).finally(() => { busy = false; });
-}, 200);
+}
 
 // ---- start ----
-let queued = false;
-new MutationObserver(() => {
-  if (queued) return;
-  queued = true;
-  setTimeout(() => { queued = false; scan(); }, 120);
-}).observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
-setInterval(scan, 1500); // backup, in case a change slips past the observer
+// One loop reads the page and runs auto answer and auto queue, about 7 times a second, hidden tab included.
+(async () => {
+  for (;;) {
+    try { scan(); tick(); } catch (e) { console.warn('Krillion Solver:', e); }
+    await (settings.auto || settings.queue ? sleep(150) : localSleep(150));
+  }
+})();
 
 chrome.storage.local.get(['settings', 'learned']).then(s => {
   if (s.settings) settings = { ...settings, ...s.settings };

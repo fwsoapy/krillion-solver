@@ -252,7 +252,7 @@ footer a { color: var(--foam); }
 const { TIERS, norm, search, tierOf } = KrMatch;
 const $ = id => document.getElementById(id);
 const q = $('q'), list = $('list'), result = $('result'), latest = $('latest');
-const PAGE = 300;       // answers shown per tier before "Show more"
+const PAGE = 20;        // answers shown per tier, and added by each "Show more"
 let INDEX = [], matches = [], active = -1, current = null, filterTimer = 0;
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
@@ -384,7 +384,7 @@ function visible(id) {
 function fill(id, restart) {
   const items = visible(id), box = $('c-' + id), more = $('m-' + id);
   if (restart) { box.textContent = ''; current.shown[id] = 0; }
-  const from = current.shown[id], to = Math.min(items.length, from + PAGE * (restart ? 1 : 2));
+  const from = current.shown[id], to = Math.min(items.length, from + PAGE);
   const frag = document.createDocumentFragment();
   for (let i = from; i < to; i++) {
     const b = document.createElement('button');

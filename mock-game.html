@@ -1,45 +1,106 @@
 <!DOCTYPE html>
-<!-- Test page for the extension: copies the class names the real game uses (Puffer Party, or the daily with ?daily)
-     and runs extension/content.js with a stand-in for the chrome.* APIs. Serve the folder and open /mock-game.html. -->
+<!-- Test page for the extension. It copies the class names the real game uses and plays the game's part: it judges
+     answers like the server (accepts unused answers on the sheet, turns down the rest), passes the puffer, and shows
+     Play again. extension/content.js runs on it with a stand-in for the chrome.* APIs.
+     Serve the folder, then open /mock-game.html (party), ?daily (daily dive), and add &test to run extension-test.js. -->
 <html lang="en">
 <head><meta charset="UTF-8"><title>Mock Krillion</title>
-<style>body{background:#050a14;color:#e8f1ff;font:16px system-ui;padding:20px}.pf-seat{margin:6px 0}.pf-say{display:inline-block;min-width:4px;padding:2px 6px;border:1px solid #2c4168}.me{color:#ff5d8f}.hold::after{content:" (holds the puffer)"}</style>
+<style>
+  body { background: #050a14; color: #e8f1ff; font: 15px system-ui; padding: 20px; }
+  .pf-seat { margin: 6px 0; } .pf-say { display: inline-block; min-width: 4px; padding: 2px 6px; border: 1px solid #2c4168; margin-right: 6px; }
+  .me { color: #ff5d8f; } .hold::after { content: " (holds the puffer)"; }
+  #results { white-space: pre-wrap; font: 13px ui-monospace, monospace; max-width: 560px; }
+</style>
 </head>
 <body>
 <script>
-  // Stand-in for the extension APIs: data comes from this server's data/ folder.
+  const daily = location.search.includes('daily');
+  // A worker timer stands in for the service worker's: neither is slowed down in a hidden tab.
+  const worker = new Worker(URL.createObjectURL(new Blob(['onmessage = e => setTimeout(() => postMessage(e.data.id), e.data.ms)'])));
+  let wid = 0;
+  const waits = new Map();
+  worker.onmessage = e => { const f = waits.get(e.data); waits.delete(e.data); f && f(); };
+  window.wwait = ms => new Promise(r => { const id = ++wid; waits.set(id, r); worker.postMessage({ id, ms }); });
+
   const store = {};
   window.chrome = {
     runtime: {
       lastError: undefined,
       onMessage: { addListener() {} },
       sendMessage(msg, cb) {
+        if (msg.type === 'sleep') { wwait(msg.ms).then(() => cb({ data: true })); return; }
         const url = msg.type === 'index' ? 'data/index.json' : `data/${msg.d}/p${msg.p}.json`;
         fetch(url).then(r => r.json()).then(data => cb({ data }), e => cb({ error: String(e) }));
       },
     },
-    storage: { local: { get: async () => ({ ...store }), set: async o => Object.assign(store, o) } },
+    storage: { local: { get: async () => JSON.parse(JSON.stringify(store)), set: async o => Object.assign(store, o) } },
   };
-  window.__submitted = []; window.__inputs = 0;
-  const daily = location.search.includes('daily');
+
   document.write(daily
     ? `<div class="ds-root"><div class="ds-card"><div class="prompt">Name a power tool</div></div>
-       <form class="ds-dock"><input class="ds-input" placeholder="type one answer…"><button type="submit">DIVE</button></form></div>`
+       <form class="ds-dock"><input class="ds-input" placeholder="type one answer…"><button type="submit">DIVE</button></form>
+       <button class="ds-next-btn" hidden>DESCEND ▼</button></div>`
     : `<div class="ds-root pf-root"><div class="ds-card"><div class="prompt">Name a power tool</div></div>
        <div class="pf-seat" id="s1"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">ana</b></div>
        <div class="pf-seat" id="s2"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">bo</b></div>
        <div class="pf-seat me" id="me"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">you</b></div>
-       <input class="ds-input" placeholder="wait for the puffer…"></div>`);
+       <input class="ds-input" placeholder="wait for the puffer…">
+       <button class="ds-next-btn" hidden>PLAY AGAIN</button> <button class="ds-next-btn" hidden>NEW TABLE</button></div>`);
+
+  // ---- the game's side ----
   const box = document.querySelector('input.ds-input');
-  box.addEventListener('input', () => __inputs++);
-  if (daily) document.querySelector('form').addEventListener('submit', e => { e.preventDefault(); __submitted.push(box.value); box.value = ''; });
-  else box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); __submitted.push(box.value); box.value = ''; } });
-  // Test helpers: a player says an answer (accepted, with its tier), whose turn it is, a new prompt.
-  window.say = (seat, text, tier) => { const el = document.querySelector(`#${seat} .pf-say`); el.className = 'pf-say ds-chip ds-px on ok'; el.textContent = text; el.style.setProperty('--cc', `var(--tier-${tier}, #fff)`); };
+  window.game = { sheet: null, used: new Set(), said: [], log: [], rejectNext: 0, inputs: [], clicks: [] };
+  box.addEventListener('input', () => game.inputs.push({ t: performance.now(), v: box.value }));
+  document.querySelectorAll('.ds-next-btn').forEach(b => b.addEventListener('click', () => game.clicks.push({ t: performance.now(), text: b.textContent })));
+  const tierOf = v => { const k = KrMatch.norm(v); for (const t of KrMatch.TIERS) if ((game.sheet.tiers[t.id] || []).some(a => KrMatch.norm(a) === k)) return t.id; return null; };
+  window.say = (seat, text, tier, cls = 'ok') => {
+    const el = document.querySelector(`#${seat} .pf-say`);
+    el.className = `pf-say ds-chip ds-px on ${cls}`; el.textContent = text;
+    tier ? el.style.setProperty('--cc', `var(--tier-${tier}, #fff)`) : el.style.removeProperty('--cc');
+  };
   window.turn = seat => { document.querySelectorAll('.pf-seat').forEach(s => s.classList.toggle('hold', s.id === seat)); };
-  window.prompt2 = text => { document.querySelector('.prompt').textContent = text; };
+  // The server's judgement of one answer: on the sheet, not said yet, and not forced to fail by a test.
+  function judge(v) {
+    const tier = game.sheet && tierOf(v), k = KrMatch.norm(v);
+    const ok = !!tier && !game.used.has(k) && !(game.rejectNext > 0 && game.rejectNext--);
+    game.log.push({ t: performance.now(), v, tier, ok, repeat: game.used.has(k), lastTwo: game.said.slice(-2) });
+    if (ok) { game.used.add(k); game.said.push(v); }
+    return { ok, tier };
+  }
+  if (daily) {
+    document.querySelector('form').addEventListener('submit', e => {
+      e.preventDefault();
+      const v = box.value.trim(); box.value = '';
+      if (!v) return;
+      judge(v);
+      document.querySelector('form').hidden = true; // the daily shows its feedback, then the next prompt
+    });
+  } else {
+    box.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const v = box.value.trim(); box.value = '';
+      if (!v || !document.querySelector('#me.hold')) return;
+      const { ok, tier } = judge(v);
+      say('me', v.toLowerCase(), ok ? tier : null, ok ? 'ok' : 'bad');
+      if (ok) turn('s1');
+    });
+  }
+  // A new question: its answer sheet is what the server judges against.
+  window.setPrompt = async text => {
+    const idx = window.__idx || (window.__idx = await (await fetch('data/index.json')).json());
+    const e = idx.find(x => x.t === text);
+    game.sheet = e ? await (await fetch(`data/${e.d}/p${e.p}.json`)).json() : { tiers: {} };
+    game.used = new Set(); game.said = [];
+    document.querySelector('.prompt').textContent = text;
+    game.promptAt = performance.now();
+    if (daily) document.querySelector('form').hidden = false;
+  };
+  window.setPrompt('Name a power tool');
 </script>
 <script src="match.js"></script>
 <script src="extension/content.js"></script>
+<pre id="results"></pre>
+<script>if (location.search.includes('test')) document.write('<script src="extension-test.js"><\/script>');</script>
 </body>
 </html>
