@@ -1,0 +1,6 @@
+# downloaded source pages (update.js rebuilds from these)
+.cache/
+# copies made by build.js
+extension/data/
+extension/match.js
+extension/icon.png

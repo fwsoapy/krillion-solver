@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- Test page for the extension: copies the class names the real game uses (Puffer Party, or the daily with ?daily)
+     and runs extension/content.js with a stand-in for the chrome.* APIs. Serve the folder and open /mock-game.html. -->
+<html lang="en">
+<head><meta charset="UTF-8"><title>Mock Krillion</title>
+<style>body{background:#050a14;color:#e8f1ff;font:16px system-ui;padding:20px}.pf-seat{margin:6px 0}.pf-say{display:inline-block;min-width:4px;padding:2px 6px;border:1px solid #2c4168}.me{color:#ff5d8f}.hold::after{content:" (holds the puffer)"}</style>
+</head>
+<body>
+<script>
+  // Stand-in for the extension APIs: data comes from this server's data/ folder.
+  const store = {};
+  window.chrome = {
+    runtime: {
+      lastError: undefined,
+      onMessage: { addListener() {} },
+      sendMessage(msg, cb) {
+        const url = msg.type === 'index' ? 'data/index.json' : `data/${msg.d}/p${msg.p}.json`;
+        fetch(url).then(r => r.json()).then(data => cb({ data }), e => cb({ error: String(e) }));
+      },
+    },
+    storage: { local: { get: async () => ({ ...store }), set: async o => Object.assign(store, o) } },
+  };
+  window.__submitted = []; window.__inputs = 0;
+  const daily = location.search.includes('daily');
+  document.write(daily
+    ? `<div class="ds-root"><div class="ds-card"><div class="prompt">Name a power tool</div></div>
+       <form class="ds-dock"><input class="ds-input" placeholder="type one answer…"><button type="submit">DIVE</button></form></div>`
+    : `<div class="ds-root pf-root"><div class="ds-card"><div class="prompt">Name a power tool</div></div>
+       <div class="pf-seat" id="s1"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">ana</b></div>
+       <div class="pf-seat" id="s2"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">bo</b></div>
+       <div class="pf-seat me" id="me"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">you</b></div>
+       <input class="ds-input" placeholder="wait for the puffer…"></div>`);
+  const box = document.querySelector('input.ds-input');
+  box.addEventListener('input', () => __inputs++);
+  if (daily) document.querySelector('form').addEventListener('submit', e => { e.preventDefault(); __submitted.push(box.value); box.value = ''; });
+  else box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); __submitted.push(box.value); box.value = ''; } });
+  // Test helpers: a player says an answer (accepted, with its tier), whose turn it is, a new prompt.
+  window.say = (seat, text, tier) => { const el = document.querySelector(`#${seat} .pf-say`); el.className = 'pf-say ds-chip ds-px on ok'; el.textContent = text; el.style.setProperty('--cc', `var(--tier-${tier}, #fff)`); };
+  window.turn = seat => { document.querySelectorAll('.pf-seat').forEach(s => s.classList.toggle('hold', s.id === seat)); };
+  window.prompt2 = text => { document.querySelector('.prompt').textContent = text; };
+</script>
+<script src="match.js"></script>
+<script src="extension/content.js"></script>
+</body>
+</html>

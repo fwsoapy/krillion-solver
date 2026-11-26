@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Krillion Solver",
+  "version": "1.0.0",
+  "description": "Reads the prompt on Krillion (daily dive and Puffer Party) and lists every answer by tier, minus the ones already said.",
+  "permissions": ["scripting", "storage"],
+  "host_permissions": [
+    "https://krillion.io/*",
+    "https://*.krillion.io/*",
+    "https://krillion.run/data/*"
+  ],
+  "background": { "service_worker": "sw.js" },
+  "action": {
+    "default_title": "Krillion Solver",
+    "default_icon": { "16": "icon.png", "32": "icon.png", "48": "icon.png", "128": "icon.png" }
+  },
+  "icons": { "16": "icon.png", "32": "icon.png", "48": "icon.png", "128": "icon.png" },
+  "content_scripts": [
+    {
+      "matches": ["https://krillion.io/*", "https://*.krillion.io/*"],
+      "js": ["match.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
