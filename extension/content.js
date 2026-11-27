@@ -216,7 +216,12 @@ document.documentElement.appendChild(host);
 for (const t of ['keydown', 'keyup', 'keypress']) host.addEventListener(t, ev => ev.stopPropagation());
 
 $('x').onclick = () => { closed = true; panel.hidden = true; };
-$('min').onclick = () => { collapsed = !collapsed; panel.classList.toggle('min', collapsed); };
+$('min').onclick = () => {
+  collapsed = !collapsed; panel.classList.toggle('min', collapsed);
+  const b = $('min'), label = collapsed ? 'Expand' : 'Collapse';
+  b.querySelector('path').setAttribute('d', collapsed ? 'M6 12h12M12 6v12' : 'M6 12h12');
+  b.setAttribute('aria-label', label); b.title = label;
+};
 
 // Drag the panel by its title bar, resize it by its corner. It remembers where you left it and its size, and stays on
 // screen when the window shrinks. Its own size: up to the window's height; the default size: up to 520px.
