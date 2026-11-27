@@ -42,7 +42,8 @@ function doPost(e) {
 
 // { prompt: ["answer/T"] }, T = K D R S T P, or W: only ever turned down ("wrong"). One entry per answer (compared by
 // norm), with the latest tier it got (rows are in time order); a tier beats W, so one bad report can't wipe a real
-// answer. Prompt and answer text as first seen. The header row and malformed rows are skipped.
+// answer. Each prompt's answers are listed most-said first (rows with a real tier; ties in first-seen order). Prompt and
+// answer text as first seen. The header row and malformed rows are skipped.
 function doGet() {
   const prompts = new Map(), out = {};
   for (const [, p, a, tier] of SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getDataRange().getValues()) {
@@ -51,11 +52,12 @@ function doGet() {
     if (!L || !norm(t) || !norm(answer)) continue;
     if (!prompts.has(norm(t))) prompts.set(norm(t), { t, answers: new Map() });
     const answers = prompts.get(norm(t)).answers;
-    if (!answers.has(norm(answer))) answers.set(norm(answer), { answer, L });
+    if (!answers.has(norm(answer))) answers.set(norm(answer), { answer, L, n: 0 });
     const it = answers.get(norm(answer));
+    if (L !== 'W') it.n++;
     if (L !== 'W' || it.L === 'W') it.L = L;
   }
-  for (const { t, answers } of prompts.values()) out[t] = [...answers.values()].map(({ answer, L }) => answer + '/' + L);
+  for (const { t, answers } of prompts.values()) out[t] = [...answers.values()].sort((a, b) => b.n - a.n).map(({ answer, L }) => answer + '/' + L);
   return reply(out);
 }
 

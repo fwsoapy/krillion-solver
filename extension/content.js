@@ -30,7 +30,6 @@ const FIRST = 20;                                        // answers shown per ti
 const KEY_MS = [300, 220, 160, 110, 70];                 // average time per key, speed 1 (slow) to 5 (fast)
 const THINK_MS = [1500, 1100, 750, 480, 260];            // pause before starting to type
 const READ_MS = 2000;                                    // a new question stays up this long before auto answer types
-const SHORT = 22;                                        // auto answer prefers answers this long or shorter (the puffer pops fast)
 const ICON = id => `https://krillion.io/tiers/${id}.png`;
 
 let INDEX = null, promptText = '', entry = null, sheet = null, ver = 0;
@@ -590,8 +589,8 @@ async function typeOut(box, text, still) {
 }
 async function clearBox(box, still = () => true) { while (box.value && still()) { press(box, 'Backspace'); await sleep(keyMs() * 0.5); } }
 
-// A random unused answer: a tier from the range that has some left, common ones likelier (Plankton 6 to One in a
-// Krillion 1), then a random answer in it (short ones first).
+// An unused answer: a tier from the range that has some left, common ones likelier (Plankton 6 to One in a Krillion 1),
+// then its first unused answer (lists are most said first).
 function chooseAnswer() {
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   let pools = LOW_TO_HIGH.map((t, i) => ({ w: 6 - i, p: unused(t.id) })).slice(lo, hi + 1).filter(x => x.p.length);
@@ -604,7 +603,7 @@ function chooseAnswer() {
   }
   if (!pools.length) return null;
   let r = Math.random() * pools.reduce((s, x) => s + x.w, 0);
-  return pickShort((pools.find(x => (r -= x.w) < 0) || pools[pools.length - 1]).p);
+  return (pools.find(x => (r -= x.w) < 0) || pools[pools.length - 1]).p[0];
 }
 // The next answer: a long answer's whole form once its 2-word try was turned down, else a new one.
 const nextAnswer = () => (longTry && longTry.p === promptText && longTry.down && free(longTry.k) ? longTry.a : null) || chooseAnswer() || guessAnswer();
@@ -622,7 +621,6 @@ function typeText(a) {
   longTry = { p: promptText, a, k, sk: norm(s), s, down: false };
   return s;
 }
-const pickShort = pool => { const short = pool.filter(a => a.length <= SHORT); return rand(short.length ? short : pool); };
 
 // The 3 closest daily prompts on the same topic: they share a topic word ("movie", "city"), not just "used in" or a word
 // in a "(like …)" example. "Name a term used in baseball" isn't "Name a sauce used in Asian cooking".
