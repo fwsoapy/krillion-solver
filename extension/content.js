@@ -602,14 +602,12 @@ async function clearBox(box, still = () => true) { while (box.value && still()) 
 function chooseAnswer() {
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   let pools = LOW_TO_HIGH.map((t, i) => ({ w: 6 - i, p: unused(t.id) })).slice(lo, hi + 1).filter(x => x.p.length);
-  if (!pools.length) { // nothing left in range: party.json's untiered answers (most common first), then the closest tier outside it
-    const m = more.find(a => free(norm(a)) && !inTiers(a));
-    if (m) return m;
+  if (!pools.length) { // nothing left in range: the closest tier outside it, then party.json's untiered answers (most common first)
     const dist = i => (i < lo ? lo - i : i - hi);
     const out = LOW_TO_HIGH.map((t, i) => ({ i, p: unused(t.id) })).filter(x => x.p.length && (x.i < lo || x.i > hi)).sort((a, b) => dist(a.i) - dist(b.i));
-    pools = out.length ? [{ w: 1, p: out[0].p }] : [];
+    if (out.length) return out[0].p[0];
+    return more.find(a => free(norm(a)) && !inTiers(a)) || null;
   }
-  if (!pools.length) return null;
   let r = Math.random() * pools.reduce((s, x) => s + x.w, 0);
   return (pools.find(x => (r -= x.w) < 0) || pools[pools.length - 1]).p[0];
 }
