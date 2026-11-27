@@ -145,7 +145,7 @@ root.innerHTML = `<style>
   .body::-webkit-scrollbar-track { background: transparent; }
   @media (prefers-reduced-motion: reduce) { .sw input, .sw input::before, input[type=range]::-webkit-slider-thumb { transition: none; } }
   .st { margin: 0; color: var(--drift); font-size: 12.5px; }
-  .p.min .body, .p.min .auto { display: none; }
+  .p.min .body, .p.min .auto > :nth-child(n+4) { display: none; } /* collapsed: auto switch, tiers, speed only */
   .p.min { height: auto !important; min-height: 0; resize: none; }
   .body { overflow-y: auto; padding: 10px 12px 12px; display: grid; gap: 10px; }
   .q { font: 400 22px/1.05 var(--pixel); margin: 0; }
