@@ -43,7 +43,7 @@ Each tier lists the most common answers first, 20 at a time. Where The Word Find
 
 The extension also bundles a word list made from the same FrequencyWords list (CC BY-SA 4.0), kept in `data/words.txt`. It answers party prompts like "Name an English word containing “bio”" that have no answer list.
 
-Party answers (`data/party.json`) come from the opt-in collector sheet plus generated answer lists in `collector/generated/`. `collector/sheet.json` is a snapshot of the sheet. To refresh: export the sheet to `collector/sheet.json` (`{ "prompt": ["answer/T"] }`, T = K, D, R, S, T or P from One in a Krillion down to Plankton), then run `node party.js` and `node build.js`.
+Party answers (`data/party.json`) come from the opt-in collector sheet plus generated answer lists in `collector/generated/`. They refresh on their own every few hours: the update job runs `node party.js --fetch`, which saves the collector's answers to `collector/sheet.json` and rebuilds `data/party.json`. The extension loads the newest list from the website and falls back to its built-in copy. By hand: put a sheet export in `collector/sheet.json` (`{ "prompt": ["answer/T"] }`, T = K, D, R, S, T or P from One in a Krillion down to Plankton), then run `node party.js` and `node build.js`.
 
 The last 29 days match The Word Finder's official counts to within a handful of answers. 17 small prompts, like "Name a country that borders Brazil", have no gem in any source. The game seems to skip the gem on short closed lists, and the solver says so.
 

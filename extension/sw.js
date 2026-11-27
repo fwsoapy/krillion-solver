@@ -51,9 +51,17 @@ async function wordList() {
   return r.text();
 }
 
-// Party prompts the archive lacks, with answers (data/party.json, made by ../party.js). Missing: none.
-let partyList = null;
-const party = async () => partyList = partyList || await getJSON(chrome.runtime.getURL('data/party.json')).catch(() => []);
+// Party prompts the archive lacks, with answers (data/party.json, made by ../party.js). The website's copy is refreshed
+// every few hours from the collector, so that comes first, at most every 6 hours; on any error the last list or the bundled copy.
+const PARTY_URL = 'https://fwsoapy.github.io/krillion-solver/data/party.json';
+let partyList = null, partyAt = 0;
+const party = async () => {
+  if (partyList && Date.now() - partyAt < 6 * 3600e3) return partyList;
+  partyAt = Date.now();
+  return partyList = await fetch(PARTY_URL, { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject(new Error(`party.json: ${r.status}`)))
+    .then(j => Array.isArray(j) && j.length && j.every(p => p && typeof p.t === 'string') ? j : Promise.reject(new Error('bad party.json')))
+    .catch(() => partyList || getJSON(chrome.runtime.getURL('data/party.json')).catch(() => []));
+};
 
 // Sends { items: [{ prompt, answers: [{ answer, tier }] }] }. text/plain skips the CORS preflight Apps Script can't answer.
 async function contribute(items) {

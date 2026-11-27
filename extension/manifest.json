@@ -8,6 +8,7 @@
     "https://krillion.io/*",
     "https://*.krillion.io/*",
     "https://krillion.run/data/*",
+    "https://fwsoapy.github.io/*",
     "https://script.google.com/*",
     "https://script.googleusercontent.com/*"
   ],
