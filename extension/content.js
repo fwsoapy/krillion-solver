@@ -317,6 +317,7 @@ function myTurnBox() {
 // Click an answer: put it in the answer box (you still press Enter) and copy it.
 function useAnswer(text) {
   takeOver('you picked an answer');
+  text = plain(text);
   const box = gameInput();
   if (box && !box.disabled) {
     setVal(box, text);
