@@ -34,9 +34,13 @@ To install it:
 
 After a rebuild, click the reload arrow on the extension's card. New daily dives load by themselves, so you only rebuild to pick up new site code.
 
+If `.cache/p0rt1k/krillion.sql` is present, `node build.js` adds its extra prompts to your local extension. They aren't published because that dump has no license.
+
 ## Where the answers come from
 
-Krillion doesn't publish its answer sheets, so `update.js` merges three fan archives:
+Krillion shows its own answer sheet for the current day only. `update.js` saves it each day once it's public (`official/<date>.json.gz`) and uses it as the source of truth for that day's answers and tiers.
+
+For earlier days, `update.js` merges three fan archives:
 
 - [krillion.run](https://krillion.run/answers/archive/) has the full list for each day
 - [minutecryptic.today](https://minutecryptic.today/krillion-answers) fills in answers and gems krillion.run missed

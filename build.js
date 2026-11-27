@@ -22,5 +22,7 @@ if (!fs.existsSync(path.join(ext, 'data', 'words.txt'))) console.log('No data/wo
 // Party answers (data/party.json, from node party.js) came along with data/.
 if (fs.existsSync(path.join(ext, 'data', 'party.json'))) console.log(`extension/data/party.json: ${JSON.parse(fs.readFileSync(path.join(ext, 'data', 'party.json'), 'utf8')).length} party prompts.`);
 else console.log('No data/party.json (node party.js makes it): skipped party answers.');
+// Extra prompts from a local, unlicensed dump (extra.js): into extension/data/ only, never data/.
+if (fs.existsSync(path.join(__dirname, '.cache', 'p0rt1k', 'krillion.sql'))) require('./extra.js')();
 const n = JSON.parse(fs.readFileSync(path.join(ext, 'data', 'index.json'), 'utf8')).length;
 console.log(`extension/ ready: ${n} prompts. Load it unpacked from chrome://extensions.`);

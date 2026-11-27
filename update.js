@@ -1,11 +1,13 @@
 // Builds data/ from every daily dive: data/index.json (all prompts) and data/<date>/p<n>.json (every answer, by tier).
-// Sources, merged per prompt:
+// A day with Krillion's own sheet (official/<date>.json.gz, saved by this while it's public) uses only that sheet's
+// answers and tiers; the fan sources then only give wording and order.
+// Other days: fan sources, merged per prompt:
 //   krillion.run      full answer lists for each day (main source)
 //   minutecryptic.today  fills answers and gems krillion.run is missing (its lists are cut short, so it only adds)
 //   thewordfinder.com    used for a day krillion.run doesn't have
 // Downloads go to .cache/ and are reused; the newest 2 days are always downloaded again because the sheets can still change.
 // Run: node update.js
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const { TIERS, norm, score } = require('./match.js');
 
 const ROOT = __dirname, CACHE = path.join(ROOT, '.cache'), OUT = path.join(ROOT, 'data');
@@ -133,6 +135,66 @@ function merge(main, extra, rank) {
 
 const TWF_FIRST = '2026-10-28'; // thewordfinder's archive starts here
 
+// ---- Krillion's own answer sheet ----
+// krillion.io shows the full sheet (answers, tiers, aliases) for today only, so each run saves it once to
+// official/<date>.json.gz (tracked, gzipped): { date, prompts: [{ id, t, tiers, aliases }] }; aliases are kept for later.
+// Any failure leaves the day to the fan sources.
+const OFFICIAL = path.join(ROOT, 'official');
+const readOfficial = d => { const f = path.join(OFFICIAL, `${d}.json.gz`); return fs.existsSync(f) ? JSON.parse(zlib.gunzipSync(fs.readFileSync(f))).prompts : null; };
+async function saveOfficial(today) {
+  const json = async url => {
+    const r = await fetch(url, { headers: { 'User-Agent': 'krillion-solver', Accept: 'application/json' } });
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}${r.status === 429 ? ' (rate limited)' : ''}`);
+    return r.json();
+  };
+  try {
+    const { date } = await json('https://krillion.io/api/today');
+    if (date !== today && date !== addDays(today, -1)) throw new Error(`its today is ${date}, ours is ${today}`);
+    const file = path.join(OFFICIAL, `${date}.json.gz`);
+    if (fs.existsSync(file)) return;
+    const sheet = await json(`https://krillion.io/api/reveal?date=${date}`);
+    if (sheet.date !== date) throw new Error(`asked for ${date}, got ${sheet.date}`);
+    if (!Array.isArray(sheet.prompts) || sheet.prompts.length !== 7) throw new Error('not 7 prompts');
+    const prompts = [1, 2, 3, 4, 5, 6, 7].map(n => {
+      const p = sheet.prompts.find(x => x && x.id === `p${n}`);
+      if (!p || typeof p.text !== 'string' || !Array.isArray(p.answers) || !p.answers.length) throw new Error(`p${n}: bad shape`);
+      const tiers = Object.fromEntries(IDS.map(id => [id, []])), aliases = {};
+      for (const a of p.answers) {
+        const ans = a && typeof a.answer === 'string' && a.answer.trim();
+        if (!ans || !IDS.includes(a.tier)) throw new Error(`p${n}: bad answer ${JSON.stringify(a)}`);
+        tiers[a.tier].push(ans);
+        const al = (Array.isArray(a.aliases) ? a.aliases : []).filter(x => typeof x === 'string' && x.trim());
+        if (al.length) aliases[ans] = [...(aliases[ans] || []), ...al];
+      }
+      return { id: p.id, t: p.text.trim(), tiers, aliases };
+    });
+    fs.mkdirSync(OFFICIAL, { recursive: true });
+    fs.writeFileSync(file, zlib.gzipSync(JSON.stringify({ date, prompts }), { level: 9 }));
+    console.log(`official/${date}.json.gz: Krillion's own answer sheet saved`);
+  } catch (e) { console.warn(`  Krillion's answer sheet: ${e.message}; using the fan sources`); }
+}
+
+// A day with Krillion's own sheet: its answers and tiers, ordered like the fan days (without most-typed counts, the
+// last build's order). fan = buildDay's list, for wording; prev = the last build.
+async function officialDay(date, freq, sheet, fan, prev) {
+  let popular = [];
+  if (date >= TWF_FIRST) {
+    try { popular = parseTwfPopular(await get(`twf/${date}.html`, `https://www.thewordfinder.com/misc-solvers/krillion-answers/${date}/`)); } catch (e) {}
+    if (popular.length !== 7) console.warn(`  ${date}: no most-typed counts; ${prev ? "keeping the last build's order" : 'ordered by familiarity'}`);
+  }
+  const fam = rankWith(freq, null);
+  return sheet.map(o => {
+    const i = +o.id.slice(1) - 1, f = fan && fan.length === 7 ? fan[i] : null;
+    if (f && score(f.t, o.t) < 0.6) console.warn(`  ${date} ${o.id}: check wording: "${o.t}" vs fan "${f.t}"`);
+    const pos = prev && new Map(IDS.flatMap(id => prev[i].tiers[id].map((a, j) => [norm(a), j])));
+    const rank = popular.length === 7 || date < TWF_FIRST ? rankWith(freq, popular[i]) // most-typed counts, then familiarity
+      : pos ? a => pos.has(norm(a)) ? 1e6 - pos.get(norm(a)) : fam(a) : fam;
+    const tiers = merge(o.tiers, null, rank);
+    const alt = f && [f.t, f.alt].find(x => x && norm(x) !== norm(o.t));
+    return { t: o.t, ...(alt ? { alt } : {}), tiers };
+  });
+}
+
 // One day -> [{ t, alt?, tiers }] (7 prompts), or null when no source has it yet.
 async function buildDay(date, fresh, freq) {
   const runText = await get(`run/${date}.json`, `https://krillion.run/data/answers/${date}.json`, fresh);
@@ -168,6 +230,7 @@ async function buildDay(date, fresh, freq) {
 
 async function main() {
   const today = todayET();
+  await saveOfficial(today);
   const index = [];
   let days = 0;
   // English word counts from subtitles (github.com/hermitdave/FrequencyWords, CC BY-SA 4.0): "word count" per line.
@@ -189,8 +252,10 @@ async function main() {
     const fresh = d >= addDays(today, -1);
     let prompts = null;
     try { prompts = await buildDay(d, fresh, freq); } catch (e) { console.warn(`  ${d}: ${e.message}`); }
+    const official = readOfficial(d);
     const prev = previous(d);
-    if (prev && (!prompts || total(prompts) < total(prev))) {
+    if (official) prompts = await officialDay(d, freq, official, prompts, prev); // the source of truth: no fallback needed
+    else if (prev && (!prompts || total(prompts) < total(prev))) {
       console.warn(`  ${d}: sources gave ${prompts ? total(prompts) : 'no'} answers, the last build had ${total(prev)}; keeping the last build`);
       prompts = prev;
     } else if (prev && prompts.missingCounts && total(prompts) === total(prev)) {

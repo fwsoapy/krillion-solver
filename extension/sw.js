@@ -63,6 +63,10 @@ const party = async () => {
     .catch(() => partyList || getJSON(chrome.runtime.getURL('data/party.json')).catch(() => []));
 };
 
+// Extra prompts bundled only in a local build (data/extra.json, made by ../extra.js). Missing: none.
+let extraList = null;
+const extra = async () => extraList = extraList || await getJSON(chrome.runtime.getURL('data/extra.json')).catch(() => []);
+
 // Sends { items: [{ prompt, answers: [{ answer, tier }] }] }. text/plain skips the CORS preflight Apps Script can't answer.
 async function contribute(items) {
   if (!CONTRIBUTE_URL) throw new Error('no collector URL set');
@@ -75,7 +79,7 @@ async function contribute(items) {
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   // "sleep": the panel's timer while its tab is hidden (Chrome slows a hidden tab's own timers, not this worker's).
   const job = msg.type === 'index' ? index() : msg.type === 'prompt' ? prompt(msg.d, msg.p)
-    : msg.type === 'contribute' ? contribute(msg.items) : msg.type === 'words' ? wordList() : msg.type === 'party' ? party()
+    : msg.type === 'contribute' ? contribute(msg.items) : msg.type === 'words' ? wordList() : msg.type === 'party' ? party() : msg.type === 'extra' ? extra()
     : msg.type === 'sleep' ? new Promise(r => setTimeout(() => r(true), Math.min(Math.max(+msg.ms || 0, 0), 10000))) : null;
   if (!job) return false;
   job.then(data => reply({ data }), err => reply({ error: String(err) }));

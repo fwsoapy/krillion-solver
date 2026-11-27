@@ -5,7 +5,7 @@
 //   there yours count when you press Enter. Resets when the prompt changes.
 // - Party has prompts the daily archive doesn't. Every accepted answer seen in your games is saved with its tier (the
 //   bubble's --cc color), so a prompt you've seen before has a list next time. Party prompts in data/party.json (party.js)
-//   add their tiers and an "Unrated" list.
+//   add their tiers and an "Unrated" list; then a local build's data/extra.json (extra.js) the same way.
 // - An answer of yours the game turns down that nobody had said this round is wrong: crossed off and never tried again
 //   on that prompt, in later games too. With Contribute on, a party prompt's wrong answers go to the collector too, and
 //   data/party.json's "wrong" ones are crossed off the same way.
@@ -43,6 +43,7 @@ let rejected = {}, bad = {};                             // promptKey -> { norm(
 let told = new Set();                                    // norm(answer): this prompt's party.json "wrong" answers
 const REJECT_MAX = 200;                                  // per prompt
 let PARTY = null, partyAsked = false, party = null, more = []; // data/party.json / this prompt's entry and its untiered answers
+let EXTRA = [], POOL = [];                                // data/extra.json (local builds only) / INDEX and EXTRA: close prompts come from it
 let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false, contribute: false }; // from/to index LOW_TO_HIGH
 let outbox = {}, sent = {};                              // promptKey|norm(answer)|tier -> [prompt as shown, answer, tier] / 1
 let promptAt = 0;                                        // when the current question appeared
@@ -373,11 +374,11 @@ function reject(said) {
   return true;
 }
 
-// A prompt the archive lacks may be in data/party.json: its tiers join the sheet, its untiered answers go in "more".
+// A prompt the archive lacks may be in data/party.json, or else data/extra.json: its tiers join the sheet, its untiered answers go in "more".
 const loadParty = () => partyAsked || (partyAsked = true, ask({ type: 'party' }).then(d => { PARTY = d || []; matchParty(); }, () => { PARTY = []; }));
 function matchParty() {
   if (!PARTY || archived || entry || !promptText) return;
-  const e = PARTY.find(e => same(e, promptText)); // read off the screen, so the same prompt has the same text
+  const e = PARTY.find(e => same(e, promptText)) || EXTRA.find(e => same(e, promptText)); // read off the screen, so the same prompt has the same text
   if (!e) return;
   party = e; more = party.more || []; sheet = buildSheet(party.tiers || {});
   told = new Set((party.wrong || []).map(norm).filter(k => k && !used.has(k))); // turned down for others, never accepted
@@ -445,11 +446,12 @@ body.addEventListener('click', ev => {
   if (m) { shown[m.dataset.more] = (shown[m.dataset.more] || FIRST) + FIRST; draw(); }
 });
 
-// Use an archive prompt's answers for what's on screen.
+// Use an archive prompt's answers (or an extra.json prompt's, already here) for what's on screen.
 async function pick(e) {
   const v = ++ver;
-  entry = e; sheet = null;
+  entry = e; sheet = e.tiers ? buildSheet(e.tiers) : null;
   draw();
+  if (e.tiers) return;
   try {
     const d = await ask({ type: 'prompt', d: e.d, p: e.p });
     if (v === ver) { sheet = buildSheet(d.tiers); draw(); }
@@ -629,9 +631,11 @@ const STOP = new Set(('name type kind thing things something someone word words 
   'your would could find found like other any one can has have are was were its not more than made known famous popular common etc').split(' '));
 const stem = w => w.replace(/ies$/, 'y').replace(/(xes|ches|shes|sses)$/, m => m.slice(0, -2)).replace(/([^s])s$/, '$1');
 const topics = s => new Set(norm(s.replace(/\(like[^)]*\)/gi, ' ')).split(' ').filter(w => w.length >= 3 && !STOP.has(w)).map(stem));
+let closeFor = { p: null, r: [] }; // draw asks often: the last answer
 function closePrompts(p) {
+  if (closeFor.p === p) return closeFor.r;
   const mine = topics(p);
-  return search(INDEX, p, 40).filter(({ e }) => [...topics(`${e.t} ${e.a || ''}`)].some(w => mine.has(w))).slice(0, 3);
+  return (closeFor = { p, r: search(POOL, p, 40).filter(({ e }) => [...topics(`${e.t} ${e.a || ''}`)].some(w => mine.has(w))).slice(0, 3) }).r;
 }
 // A prompt with no list: guesses come from the 3 closest daily prompts' lists, 2 tries from each, most common first; a word
 // prompt's only from the word list. Only auto answer and pre-type use them, so the panel, the sheet and contribute stay as
@@ -641,6 +645,7 @@ function loadGuess() {
   if (g.fit.dict && g.fit.parsed) loadWords();
   if (g.fit.word) return;
   closePrompts(promptText).forEach(({ e }, i) => {
+    if (e.tiers) return g.lists[i] = e.tiers;
     const id = `${e.d}/${e.p}`;
     g.lists[i] = guesses[id] || null;
     if (!guesses[id]) ask({ type: 'prompt', d: e.d, p: e.p }).then(d => { g.lists[i] = guesses[id] = d.tiers || {}; }, () => { g.lists[i] = {}; });
@@ -922,8 +927,8 @@ Promise.resolve().then(() => chrome.storage.local.get(['settings', 'learned', 'o
   if (s.sent) sent = s.sent;
   showSettings();
   place(settings.pos);
-  return ask({ type: 'index' });
-}).then(idx => { INDEX = idx; scan(); draw(); }, () => {
+  return Promise.all([ask({ type: 'index' }), ask({ type: 'extra' }).catch(() => [])]);
+}).then(([idx, ex]) => { INDEX = idx; EXTRA = ex || []; POOL = INDEX.concat(EXTRA); scan(); draw(); }, () => {
   body.innerHTML = '<p class="msg">Could not load the answer archive. Reload the extension.</p>';
 });
 draw();
