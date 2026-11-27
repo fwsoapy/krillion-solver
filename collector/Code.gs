@@ -1,7 +1,7 @@
 /** @OnlyCurrentDoc */
 // Krillion Solver collector: a Google Apps Script web app, bound to a Google Sheet (see README.md).
 // The extension POSTs { items: [{ prompt, answers: [{ answer, tier }] }] } as text/plain. Each valid answer becomes a row:
-// time (set here), prompt, answer, tier. Bad answers are skipped; a malformed or oversized request is turned down.
+// time (set here), prompt, answer, tier (one of TIERS, or "wrong": turned down). Bad answers are skipped; a malformed or oversized request is turned down.
 // A GET returns everything collected so far, read-only, in the shape of collector/sheet.json (see doGet).
 const TIERS = ['krillion', 'deepcut', 'rare', 'schooler', 'tooclever', 'plankton'], LETTERS = 'KDRSTP';
 const MAX_BODY = 50000, MAX_ITEMS = 50, MAX_ANSWERS = 100, MAX_PROMPT = 200, MAX_ANSWER = 100;
@@ -20,7 +20,7 @@ function doPost(e) {
     if (!prompt || !Array.isArray(it.answers)) continue;
     for (const a of it.answers) {
       const answer = clean(a && a.answer, MAX_ANSWER);
-      if (answer && TIERS.indexOf(a.tier) >= 0) rows.push([now, prompt, answer, a.tier]);
+      if (answer && (TIERS.indexOf(a.tier) >= 0 || a.tier === 'wrong')) rows.push([now, prompt, answer, a.tier]);
     }
   }
   if (rows.length > MAX_ANSWERS) return reply({ ok: false, error: 'too many answers' });
@@ -40,21 +40,22 @@ function doPost(e) {
   return reply({ ok: true, added: rows.length });
 }
 
-// { prompt: ["answer/T"] }, T = K D R S T P. One entry per answer (compared by norm), with the tier it got most often
-// (first seen wins a tie); prompt and answer text as first seen. The header row and malformed rows are skipped.
+// { prompt: ["answer/T"] }, T = K D R S T P, or W: only ever turned down ("wrong"). One entry per answer (compared by
+// norm), with the latest tier it got (rows are in time order); a tier beats W, so one bad report can't wipe a real
+// answer. Prompt and answer text as first seen. The header row and malformed rows are skipped.
 function doGet() {
   const prompts = new Map(), out = {};
   for (const [, p, a, tier] of SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getDataRange().getValues()) {
-    const t = String(p).trim(), answer = String(a).replace(/^'(?=[=+\-@])/, '').trim(), L = LETTERS[TIERS.indexOf(tier)];
+    const t = String(p).trim(), answer = String(a).replace(/^'(?=[=+\-@])/, '').trim();
+    const L = tier === 'wrong' ? 'W' : LETTERS[TIERS.indexOf(tier)];
     if (!L || !norm(t) || !norm(answer)) continue;
     if (!prompts.has(norm(t))) prompts.set(norm(t), { t, answers: new Map() });
     const answers = prompts.get(norm(t)).answers;
-    if (!answers.has(norm(answer))) answers.set(norm(answer), { answer, n: {} });
-    const n = answers.get(norm(answer)).n;
-    n[L] = (n[L] || 0) + 1;
+    if (!answers.has(norm(answer))) answers.set(norm(answer), { answer, L });
+    const it = answers.get(norm(answer));
+    if (L !== 'W' || it.L === 'W') it.L = L;
   }
-  for (const { t, answers } of prompts.values())
-    out[t] = [...answers.values()].map(({ answer, n }) => answer + '/' + Object.keys(n).reduce((b, l) => n[l] > n[b] ? l : b));
+  for (const { t, answers } of prompts.values()) out[t] = [...answers.values()].map(({ answer, L }) => answer + '/' + L);
   return reply(out);
 }
 

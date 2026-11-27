@@ -13,9 +13,9 @@ Where the extension's "Contribute answers" sends party prompts and answers. It's
 
 To change the script later, edit it and use **Deploy > Manage deployments > Edit > New version**. That keeps the same URL. A new deployment gets a new URL.
 
-The same URL also answers a GET with everything collected so far, read-only, in the `collector/sheet.json` format: one entry per answer with the tier it got most often. The update job on GitHub fetches it every few hours (`node party.js --fetch`).
+The same URL also answers a GET with everything collected so far, read-only, in the `collector/sheet.json` format: one entry per answer with the latest tier it got. `W` means it was only ever turned down; any real tier beats it. The update job on GitHub fetches it every few hours (`node party.js --fetch`).
 
-The URL isn't a secret: it ships in the public extension, and anyone who has it can add rows. The script only accepts the six tier ids, prompts up to 200 characters and answers up to 100, and at most 100 answers a request. Delete junk rows by hand.
+The URL isn't a secret: it ships in the public extension, and anyone who has it can add rows. The script only accepts the six tier ids and `wrong` (a turned-down answer), prompts up to 200 characters and answers up to 100, and at most 100 answers a request. Delete junk rows by hand.
 
 Values that start with `= + - @` are stored with a leading `'`, so Sheets keeps them as text and never runs them as formulas.
 

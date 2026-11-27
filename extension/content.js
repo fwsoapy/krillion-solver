@@ -7,9 +7,11 @@
 //   bubble's --cc color), so a prompt you've seen before has a list next time. Party prompts in data/party.json (party.js)
 //   add their tiers and an "Unrated" list.
 // - An answer of yours the game turns down that nobody had said this round is wrong: crossed off and never tried again
-//   on that prompt, in later games too.
-// - Auto answer (off until you switch it on): on your turn it picks a random unused answer from your tier range and types it
-//   one key at a time, then presses Enter. It waits until a new question has been up 2 seconds. "Make mistakes" adds
+//   on that prompt, in later games too. With Contribute on, a party prompt's wrong answers go to the collector too, and
+//   data/party.json's "wrong" ones are crossed off the same way.
+// - Auto answer (off until you switch it on): on your turn it picks a random unused answer from your tier range (common
+//   tiers likelier) and types it in plain letters one key at a time, then presses Enter. A long one goes as its first 2
+//   words first, the whole answer only if those are turned down. It waits until a new question has been up 2 seconds. "Make mistakes" adds
 //   typos it fixes and, rarely, first tries an answer said earlier (never the latest ones). A prompt with no list: it
 //   guesses from the 3 closest daily prompts' lists, or from the word list on a word prompt.
 // - Auto queue (off until you switch it on): clicks "Play again" when a party game ends, and "Take a seat" if the game
@@ -35,13 +37,15 @@ let INDEX = null, promptText = '', entry = null, sheet = null, ver = 0;
 let closed = false, collapsed = false, opened = false, busy = false, archived = false; // archived: this prompt matched an archive prompt
 let used = new Map();                                    // norm(answer) -> answer as said
 let mine = { k: '', t: 0 };                              // your last answer sent in party: auto answer skips it a few seconds, until its bubble shows
+let longTry = null;                                      // { p, a, k, sk, s, down }: a long answer a (k = norm) tried as its first 2 words s (sk)
 let stale = new WeakMap();                               // bubble -> its text when the prompt changed (left over, not about this prompt)
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
 let rejected = {}, bad = {};                             // promptKey -> { norm(answer): 1 } turned down / this prompt's
+let told = new Set();                                    // norm(answer): this prompt's party.json "wrong" answers
 const REJECT_MAX = 200;                                  // per prompt
 let PARTY = null, partyAsked = false, party = null, more = []; // data/party.json / this prompt's entry and its untiered answers
 let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false, contribute: false }; // from/to index LOW_TO_HIGH
-let outbox = {}, sent = {};                              // promptKey|norm(answer) -> [prompt as shown, answer, tier] / 1
+let outbox = {}, sent = {};                              // promptKey|norm(answer)|tier -> [prompt as shown, answer, tier] / 1
 let promptAt = 0;                                        // when the current question appeared
 let guess = null;                                        // a prompt with no list: { p, tiers: closest daily prompt's list (null while loading), bad: guesses turned down }
 const guesses = {};                                      // 'date/n' -> that daily prompt's tiers
@@ -330,32 +334,42 @@ function buildSheet(base) {
   const tiers = Object.fromEntries(TIERS.map(t => [t.id, [...((base && base[t.id]) || [])]]));
   const keys = Object.fromEntries(TIERS.map(t => [t.id, tiers[t.id].map(norm)]));
   const all = new Set(Object.values(keys).flat());
-  for (const [k, [a, tier]] of Object.entries(learned[promptKey(promptText)] || {})) {
-    if (all.has(k) || !tiers[tier]) continue;
+  for (let [k, [a, tier]] of Object.entries(learned[promptKey(promptText)] || {})) {
+    if (!tiers[tier] || keys[tier].includes(k)) continue;
+    if (all.has(k)) for (const t of TIERS) { // in the list under another tier: the game's latest rating wins
+      const i = keys[t.id].indexOf(k);
+      if (i >= 0) { a = tiers[t.id][i]; tiers[t.id].splice(i, 1); keys[t.id].splice(i, 1); }
+    }
     tiers[tier].push(a); keys[tier].push(k); all.add(k);
   }
   return { tiers, keys, archive: !!base };
 }
-const gone = k => used.has(k) || !!bad[k];              // said this round, or turned down on this prompt
-const free = k => !gone(k) && !(k === mine.k && Date.now() - mine.t < 4000);
+const gone = k => used.has(k) || !!bad[k] || told.has(k); // said this round, or turned down on this prompt
+const free = k => !!k && !gone(k) &&!(k === mine.k && Date.now() - mine.t < 4000);
 const unused = id => sheet ? sheet.tiers[id].filter((a, i) => free(sheet.keys[id][i])) : [];
 
 function learn(answer, tier) {
   const pk = promptKey(promptText), k = norm(answer);
   if (!pk || !k || !TIERS.some(t => t.id === tier)) return false;
   const book = learned[pk] || (learned[pk] = {});
-  if (book[k]) return false;
-  book[k] = [answer, tier];
-  queue(pk + '|' + k, answer, tier);
+  if (book[k] && book[k][1] === tier) return false;
+  book[k] = [answer, tier]; // new, or the game rates it differently now: the latest rating wins
+  queue(pk + '|' + k + '|' + tier, answer, tier);
   save();
-  if (sheet && !Object.values(sheet.keys).some(ks => ks.includes(k))) { sheet.tiers[tier].push(answer); sheet.keys[tier].push(k); }
+  if (sheet && !sheet.keys[tier].includes(k)) { // move it to that tier
+    for (const t of TIERS) { const i = sheet.keys[t.id].indexOf(k); if (i >= 0) { sheet.keys[t.id].splice(i, 1); sheet.tiers[t.id].splice(i, 1); } }
+    sheet.tiers[tier].push(answer); sheet.keys[tier].push(k);
+  }
   return true;
 }
-// Your answer turned down. Already said this round: a repeat. Otherwise wrong for this prompt. True if newly recorded.
+// Your answer turned down. Already said this round: a repeat. Otherwise wrong for this prompt (and reported, with
+// Contribute on). The 2-word try of a long answer is ours, never wrong: the whole answer goes next. True if newly recorded.
 function reject(said) {
   const k = norm(said), pk = promptKey(promptText);
+  if (longTry && longTry.p === promptText && k === longTry.sk) { longTry.down = true; return false; }
   if (!k || !pk || used.has(k) || bad[k] || Object.keys(bad).length >= REJECT_MAX) return false;
   bad[k] = 1; rejected[pk] = bad; save();
+  queue(pk + '|' + k + '|wrong', said, 'wrong');
   return true;
 }
 
@@ -366,6 +380,7 @@ function matchParty() {
   const e = PARTY.find(e => same(e, promptText)); // read off the screen, so the same prompt has the same text
   if (!e) return;
   party = e; more = party.more || []; sheet = buildSheet(party.tiers || {});
+  told = new Set((party.wrong || []).map(norm).filter(k => k && !used.has(k))); // turned down for others, never accepted
   draw();
 }
 // The archive prompt on screen: the same prompt (or its alt wording) only. A close one is a different prompt ("ending in
@@ -393,7 +408,7 @@ function draw() {
   const said = [...used.values()];
   const total = TIERS.reduce((s, t) => s + sheet.tiers[t.id].length, 0);
   const near = !entry && !party ? closePrompts(promptText) : [];
-  const wrong = Object.keys(bad), left = more.filter(a => !gone(norm(a)) && !inTiers(a));
+  const wrong = [...Object.keys(bad), ...[...told].filter(k => !bad[k])], left = more.filter(a => !gone(norm(a)) && !inTiers(a));
   body.innerHTML = `
     <div><p class="q">${esc(promptText)}</p>${entry ? '' : `<p class="meta">${party ? 'Party prompt.' : total ? 'Party-only prompt.' : 'Party-only prompt. Nothing saved yet.'}</p>`}</div>
     ${near.length ? `<div class="sug"><p class="meta">Close daily prompts:</p>${near.map((m, i) => `<button type="button" data-near="${i}">${esc(m.e.t)}</button>`).join('')}</div>` : ''}
@@ -454,7 +469,7 @@ function scan() {
   let changed = false;
   if (text && text !== promptText && INDEX) {
     promptText = text; promptAt = Date.now(); used = new Map(); pending = null; guess = null; for (const k in shown) delete shown[k];
-    bad = rejected[promptKey(text)] || {}; party = null; more = [];
+    bad = rejected[promptKey(text)] || {}; told = new Set(); party = null; more = [];
     stale = new WeakMap(); settle();
     for (const el of document.querySelectorAll('.pf-say')) stale.set(el, el.textContent.trim());
     const best = archiveMatch(text);
@@ -473,6 +488,9 @@ function scan() {
     if (tier && learn(said, tier)) changed = true;
     if (!used.has(k)) { used.set(k, said); lockOn(k); changed = true; }
     if (bad[k]) { delete bad[k]; save(); } // the game took it: it wasn't wrong after all
+    told.delete(k);
+    // A long answer's 2-word try taken: that answer is done, the whole one never goes.
+    if (longTry && longTry.p === promptText && k === longTry.sk && !used.has(longTry.k)) used.set(longTry.k, longTry.a);
   }
   // Your bubble turned down what you last sent (you or auto answer): wrong unless already said (reject checks).
   const no = promptText && document.querySelector('.pf-seat.me .pf-say.bad');
@@ -520,12 +538,12 @@ function press(box, key) {
 // still holds the answer to send and your bubble shows no verdict on it. A verdict (ok, rest or bad; "caret" is just live
 // typing), the box changing, or the turn moving on: it went through, never again.
 let toSend = '', sendAt = 0, sends = 0, turnAt = 0;      // turnAt: when your turn started
-const verdict = v => { const b = document.querySelector('.pf-seat.me .pf-say:is(.ok, .rest, .bad)'); return !!b && b.textContent.trim().toLowerCase() === v; };
+const verdict = v => { const b = document.querySelector('.pf-seat.me .pf-say:is(.ok, .rest, .bad)'); return !!b && plain(b.textContent) === v; };
 function sender(box) {
   const v = box && box.value;
   if (!settings.auto || !v || verdict(v) || Date.now() < sendAt) return;
   // A pre-typed answer auto answer hasn't sent 2 s into your turn: send it anyway.
-  const stuck = v === typed.v && !!pending && v === pending.toLowerCase() && !used.has(norm(v)) && Date.now() - turnAt > 2000 && Date.now() - promptAt >= READ_MS;
+  const stuck = v === typed.v && !!pending && v === typeText(pending) &&!used.has(norm(v)) && Date.now() - turnAt > 2000 && Date.now() - promptAt >= READ_MS;
   if (v !== toSend && !stuck) return;
   sendAt = Date.now() + 250;
   box.dispatchEvent(new Event('input', { bubbles: true })); // the page may have dropped its copy of the value
@@ -572,18 +590,37 @@ async function typeOut(box, text, still) {
 }
 async function clearBox(box, still = () => true) { while (box.value && still()) { press(box, 'Backspace'); await sleep(keyMs() * 0.5); } }
 
-// A random unused answer: a random tier from the range that has some left, then a random answer in it (short ones first).
+// A random unused answer: a tier from the range that has some left, common ones likelier (Plankton 6 to One in a
+// Krillion 1), then a random answer in it (short ones first).
 function chooseAnswer() {
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
-  let pools = LOW_TO_HIGH.slice(lo, hi + 1).map(t => unused(t.id)).filter(p => p.length);
+  let pools = LOW_TO_HIGH.map((t, i) => ({ w: 6 - i, p: unused(t.id) })).slice(lo, hi + 1).filter(x => x.p.length);
   if (!pools.length) { // nothing left in range: party.json's untiered answers (most common first), then the closest tier outside it
     const m = more.find(a => free(norm(a)) && !inTiers(a));
     if (m) return m;
     const dist = i => (i < lo ? lo - i : i - hi);
     const out = LOW_TO_HIGH.map((t, i) => ({ i, p: unused(t.id) })).filter(x => x.p.length && (x.i < lo || x.i > hi)).sort((a, b) => dist(a.i) - dist(b.i));
-    pools = out.length ? [out[0].p] : [];
+    pools = out.length ? [{ w: 1, p: out[0].p }] : [];
   }
-  return pools.length ? pickShort(rand(pools)) : null;
+  if (!pools.length) return null;
+  let r = Math.random() * pools.reduce((s, x) => s + x.w, 0);
+  return pickShort((pools.find(x => (r -= x.w) < 0) || pools[pools.length - 1]).p);
+}
+// The next answer: a long answer's whole form once its 2-word try was turned down, else a new one.
+const nextAnswer = () => (longTry && longTry.p === promptText && longTry.down && free(longTry.k) ? longTry.a : null) || chooseAnswer() || guessAnswer();
+// Typed text is plain lowercase English letters: the game autocorrects close answers, and fancy characters can break typing.
+const ASCII = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-', 'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l', 'đ': 'd' };
+const plain = s => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  .replace(/[‘’“”–—ßæœøłđ]/g, c => ASCII[c]).replace(/[^\x00-\x7f]/g, '').trim();
+// What to type for answer a. In party a long one (3+ words, over 18 characters) goes as its first 2 words first
+// (longTry); once those are turned down (reject), the whole answer.
+function typeText(a) {
+  const t = plain(a), w = t.split(/\s+/), k = norm(a);
+  const s = w.length >= 3 && t.length > 18 ? (w[0] + ' ' + w[1].replace(/[^a-z0-9']+$/, '')).trim() : '';
+  if (!norm(s) || !isParty() || gone(norm(s))) return t;
+  if (longTry && longTry.p === promptText && longTry.k === k) return longTry.down ? t : longTry.s;
+  longTry = { p: promptText, a, k, sk: norm(s), s, down: false };
+  return s;
 }
 const pickShort = pool => { const short = pool.filter(a => a.length <= SHORT); return rand(short.length ? short : pool); };
 
@@ -676,25 +713,25 @@ const settle = () => { if (/"|^No |^Loading a guess/.test($('st').textContent)) 
 
 async function autoAnswer(box) {
   const p = promptText, still = () => settings.auto && myTurnBox() === box && readPrompt() === p;
-  const ready = pending && !used.has(norm(pending)) ? pending.toLowerCase() : null;
+  const ready = pending && !used.has(norm(pending)) ? typeText(pending) : null;
   const preTyped = ready && box.value && ready.startsWith(box.value); // pre-type got all or part of it in already
   // A short think (shorter when it's already typed), but never before the question has been up READ_MS, so you can read it.
   await sleep(Math.max(preTyped ? think() * 0.4 : think(), promptAt + READ_MS + Math.random() * 400 - Date.now()));
   if (!still() || !sheet) return;
   box.focus();
-  let answer;
+  let answer, said;
   if (preTyped && ready.startsWith(box.value)) {
-    answer = pending;
+    answer = pending; said = ready;
     status(`Sending "${ready}"`);
     if (!await typeOut(box, ready.slice(box.value.length), still)) return; // finish it if pre-type got cut off
   } else {
     pending = null;
     if (box.value) await clearBox(box, still);
-    answer = chooseAnswer() || guessAnswer();
+    answer = nextAnswer();
     if (!answer) { status(!guess ? 'No answers left.' : guess.lists.includes(null) || (guess.fit.dict && guess.fit.parsed && !WORDS) ? 'Loading a guess.' : 'No good guess.'); return; }
     const repeats = [...used.values()].slice(0, -2); // never the answer that was just said
     if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then (with something to send after): try something said earlier, get turned down, move on
-      const r = rand(repeats).toLowerCase();
+      const r = plain(rand(repeats));
       status(`Repeating "${r}" on purpose.`);
       if (!await typeOut(box, r, still)) return;
       pressEnter(box);
@@ -702,18 +739,18 @@ async function autoAnswer(box) {
       if (!still()) return;
       await clearBox(box, still);
     }
-    status(`${onSheet(answer) ? 'Typing' : 'Guessing'} "${answer.toLowerCase()}"`);
-    if (!await typeOut(box, answer.toLowerCase(), still)) return;
+    said = typeText(answer);
+    status(`${onSheet(answer) ? 'Typing' : 'Guessing'} "${said}"`);
+    if (!await typeOut(box, said, still)) return;
   }
   await sleep(keyMs() * 2);
   if (!still()) return;
   pending = null;
-  const said = answer.toLowerCase();
   await send(box, said);
-  if (!onSheet(answer) && guess) guess.tried.add(norm(answer));
+  if (!onSheet(answer) && guess) guess.tried.add(norm(answer)); // the whole answer's key: a 2-word try and the whole one are one guess
   status(`Sent "${said}"`);
   // Wait for the game's verdict, up to 1.5 s: the puffer moves on, or your bubble shows the answer turned down.
-  const turnedDown = () => { const b = document.querySelector('.pf-seat.me .pf-say.bad'); return !!b && b.textContent.trim().toLowerCase() === said; };
+  const turnedDown = () => { const b = document.querySelector('.pf-seat.me .pf-say.bad'); return !!b && plain(b.textContent) === said; };
   for (let i = 0; i < 10 && still() && !turnedDown(); i++) await sleep(150);
   if (promptText === p && turnedDown() && reject(said)) draw(); // don't try it again on this prompt
 }
@@ -774,19 +811,19 @@ function autoQueue() {
 let pending = null, pretypeBlocked = '';
 async function pretype(box) {
   const p = promptText, still = () => settings.auto && settings.pretype && readPrompt() === p && gameInput() === box && !myTurnBox();
-  const want = pending && !used.has(norm(pending)) ? pending.toLowerCase() : null;
+  const want = pending && !used.has(norm(pending)) ? typeText(pending) : null;
   if (want && box.value === want) return; // ready
   if (box.value) {
-    if (pending) status(`"${pending.toLowerCase()}" was said. Typing another.`);
+    if (pending) status(`"${plain(pending)}" was said. Typing another.`);
     await clearBox(box, still);
     if (!still()) return;
   }
-  pending = chooseAnswer() || guessAnswer();
+  pending = nextAnswer();
   if (!pending) return;
   await sleep(think());
   if (!still()) return;
-  status(`Pre-typing "${pending.toLowerCase()}"`);
-  const target = pending.toLowerCase();
+  const target = typeText(pending);
+  status(`Pre-typing "${target}"`);
   const done = await typeOut(box, target, still);
   // The game may not keep text typed before your turn; then stop trying for this question.
   if (done && box.value !== target) { pretypeBlocked = p; pending = null; status('Pre-type paused: the game clears the box.'); }
