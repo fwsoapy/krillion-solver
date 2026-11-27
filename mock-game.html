@@ -25,12 +25,14 @@
   const store = {};
   window.chrome = {
     runtime: {
-      lastError: undefined,
+      id: 'mock', lastError: undefined,
       onMessage: { addListener() {} },
       sendMessage(msg, cb) {
         if (msg.type === 'sleep') { wwait(msg.ms).then(() => cb({ data: true })); return; }
-        const url = msg.type === 'index' ? 'data/index.json' : `data/${msg.d}/p${msg.p}.json`;
-        fetch(url).then(r => r.json()).then(data => cb({ data }), e => cb({ error: String(e) }));
+        // wwait, not setTimeout: a hidden tab's timers get slowed to a minute, and the real service worker isn't.
+        if (msg.type === 'contribute') { game.posts.push(JSON.parse(JSON.stringify(msg.items))); wwait(50).then(() => cb(game.postFail ? { error: 'down' } : { data: true })); return; }
+        const url = msg.type === 'index' ? 'data/index.json' : msg.type === 'words' ? 'extension/data/words.txt' : `data/${msg.d}/p${msg.p}.json`;
+        fetch(url).then(r => msg.type === 'words' ? r.text() : r.json()).then(data => cb({ data }), e => cb({ error: String(e) }));
       },
     },
     storage: { local: { get: async () => JSON.parse(JSON.stringify(store)), set: async o => Object.assign(store, o) } },
@@ -45,13 +47,35 @@
        <div class="pf-seat" id="s2"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">bo</b></div>
        <div class="pf-seat me" id="me"><div class="pf-say ds-chip ds-px"></div><b class="pf-name">you</b></div>
        <input class="ds-input" placeholder="wait for the puffer…">
-       <button class="ds-next-btn" hidden>PLAY AGAIN</button> <button class="ds-next-btn" hidden>NEW TABLE</button></div>`);
+       <div class="pf-kick" hidden><p>You were kicked for being idle. Take a seat to play again.</p>
+         <input class="ds-input" placeholder="what the ring calls you"> <button class="ds-begin-btn">▼ TAKE A SEAT ▼</button>
+         <p class="full" hidden>This room is full.</p></div>
+       <button class="ds-next-btn" hidden>PLAY AGAIN</button> <button class="ds-next-btn" hidden>NEW TABLE</button></div>
+       <div class="lobby" hidden><button>RATED</button> <button>QUICK PLAY</button>
+         <p hidden>You're still in room MOCK. Leave that room before joining another. <button>LEAVE ROOM MOCK AND CONTINUE</button></p></div>`);
 
   // ---- the game's side ----
   const box = document.querySelector('input.ds-input');
-  window.game = { sheet: null, used: new Set(), said: [], log: [], rejectNext: 0, inputs: [], clicks: [] };
+  window.game = { sheet: null, used: new Set(), said: [], log: [], rejectNext: 0, inputs: [], clicks: [], posts: [], postFail: false, full: false, went: [] };
   box.addEventListener('input', () => game.inputs.push({ t: performance.now(), v: box.value }));
-  document.querySelectorAll('.ds-next-btn').forEach(b => b.addEventListener('click', () => game.clicks.push({ t: performance.now(), text: b.textContent })));
+  document.querySelectorAll('.ds-next-btn, .ds-begin-btn, .lobby button').forEach(b => b.addEventListener('click', () => game.clicks.push({ t: performance.now(), text: b.textContent })));
+  // Kicked for idling: your seat and the answer box go, a name box and Take a seat show. message false: the lobby's
+  // join screen, same buttons, no kick message. full: "This room is full." already shows. Take a seat (with a name) puts
+  // you back in your seat, or shows "This room is full." when game.full.
+  const kickEl = document.querySelector('.pf-kick'), lobby = document.querySelector('.lobby');
+  window.kick = (name = 'you', message = true, full = false) => {
+    kickEl.hidden = false; kickEl.querySelector('p').hidden = !message; kickEl.querySelector('.full').hidden = !full;
+    kickEl.querySelector('input').value = name;
+    box.hidden = true; document.getElementById('me').classList.remove('me', 'hold');
+  };
+  window.seat = () => { kickEl.hidden = true; box.hidden = false; document.getElementById('me').classList.add('me'); };
+  if (kickEl) kickEl.querySelector('button').addEventListener('click', () => {
+    if (game.full) kickEl.querySelector('.full').hidden = false; else if (kickEl.querySelector('input').value.trim()) seat();
+  });
+  // The lobby (krillion.io/party). The extension's page load is played here: the room goes, the lobby shows. Quick Play
+  // answers "still in room", as the real one does when you haven't left.
+  window.__krGo = url => { game.went.push(url); kickEl.hidden = true; lobby.hidden = false; };
+  if (lobby) lobby.querySelectorAll('button')[1].addEventListener('click', () => { lobby.querySelector('p').hidden = false; });
   const tierOf = v => { const k = KrMatch.norm(v); for (const t of KrMatch.TIERS) if ((game.sheet.tiers[t.id] || []).some(a => KrMatch.norm(a) === k)) return t.id; return null; };
   window.say = (seat, text, tier, cls = 'ok') => {
     const el = document.querySelector(`#${seat} .pf-say`);
@@ -59,9 +83,9 @@
     tier ? el.style.setProperty('--cc', `var(--tier-${tier}, #fff)`) : el.style.removeProperty('--cc');
   };
   window.turn = seat => { document.querySelectorAll('.pf-seat').forEach(s => s.classList.toggle('hold', s.id === seat)); };
-  // The server's judgement of one answer: on the sheet, not said yet, and not forced to fail by a test.
+  // The server's judgement of one answer: on the sheet (or passing game.accept, as plankton), not said yet, and not forced to fail by a test.
   function judge(v) {
-    const tier = game.sheet && tierOf(v), k = KrMatch.norm(v);
+    const tier = (game.sheet && tierOf(v)) || (game.accept && game.accept(v) ? 'plankton' : null), k = KrMatch.norm(v);
     const ok = !!tier && !game.used.has(k) && !(game.rejectNext > 0 && game.rejectNext--);
     game.log.push({ t: performance.now(), v, tier, ok, repeat: game.used.has(k), lastTwo: game.said.slice(-2) });
     if (ok) { game.used.add(k); game.said.push(v); }
@@ -91,7 +115,7 @@
     const idx = window.__idx || (window.__idx = await (await fetch('data/index.json')).json());
     const e = idx.find(x => x.t === text);
     game.sheet = e ? await (await fetch(`data/${e.d}/p${e.p}.json`)).json() : { tiers: {} };
-    game.used = new Set(); game.said = [];
+    game.used = new Set(); game.said = []; game.accept = null;
     document.querySelector('.prompt').textContent = text;
     game.promptAt = performance.now();
     if (daily) document.querySelector('form').hidden = false;

@@ -1,13 +1,22 @@
 // Krillion Solver panel, for the daily dive and Puffer Party.
 // - Reads the prompt (both modes show it in .prompt), finds it in the daily archive and lists every answer, gem first.
 // - Crosses off answers already said: in Puffer Party every accepted answer shows in that player's bubble (.pf-say with
-//   class "ok", then "rest"); yours count as soon as you press Enter in the answer box. Resets when the prompt changes.
+//   class "ok", then "rest"), yours included, so a turned-down answer stays on the list. The daily shows no verdict, so
+//   there yours count when you press Enter. Resets when the prompt changes.
 // - Party has prompts the daily archive doesn't. Every accepted answer seen in your games is saved with its tier (the
-//   bubble's --cc color), so a prompt you've seen before has a list next time.
+//   bubble's --cc color), so a prompt you've seen before has a list next time. Party prompts in data/party.json (party.js)
+//   add their tiers and an "Unrated" list.
+// - An answer of yours the game turns down that nobody had said this round is wrong: crossed off and never tried again
+//   on that prompt, in later games too.
 // - Auto answer (off until you switch it on): on your turn it picks a random unused answer from your tier range and types it
 //   one key at a time, then presses Enter. It waits until a new question has been up 2 seconds. "Make mistakes" adds
-//   typos it fixes and, rarely, first tries an answer said earlier (never the latest ones).
-// - Auto queue (off until you switch it on): clicks "Play again" when a party game ends.
+//   typos it fixes and, rarely, first tries an answer said earlier (never the latest ones). A prompt with no list: it
+//   guesses from the 3 closest daily prompts' lists, or from the word list on a word prompt.
+// - Auto queue (off until you switch it on): clicks "Play again" when a party game ends, and "Take a seat" if the game
+//   kicked you for idling. If the room filled up meanwhile, it goes to the lobby and clicks Quick Play.
+// - Contribute answers (off until you switch it on): party answers learned while it's on, on prompts with no archive list,
+//   go to the project's collector (sw.js CONTRIBUTE_URL) at game end and every few minutes, 50 at a time, each
+//   prompt+answer once. Only prompt, answer and tier.
 // - Works in a hidden tab: waits go through the service worker, which Chrome doesn't slow down.
 (() => {
 if (globalThis.__krSolver) return;
@@ -23,25 +32,50 @@ const SHORT = 22;                                        // auto answer prefers 
 const ICON = id => `https://krillion.io/tiers/${id}.png`;
 
 let INDEX = null, promptText = '', entry = null, sheet = null, ver = 0;
-let filter = '', closed = false, collapsed = false, opened = false, busy = false;
+let closed = false, collapsed = false, opened = false, busy = false, archived = false; // archived: this prompt matched an archive prompt
 let used = new Map();                                    // norm(answer) -> answer as said
+let mine = { k: '', t: 0 };                              // your last answer sent in party: auto answer skips it a few seconds, until its bubble shows
 let stale = new WeakMap();                               // bubble -> its text when the prompt changed (left over, not about this prompt)
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
-let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false }; // from/to index LOW_TO_HIGH
+let rejected = {}, bad = {};                             // promptKey -> { norm(answer): 1 } turned down / this prompt's
+const REJECT_MAX = 200;                                  // per prompt
+let PARTY = null, partyAsked = false, party = null, more = []; // data/party.json / this prompt's entry and its untiered answers
+let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false, contribute: false }; // from/to index LOW_TO_HIGH
+let outbox = {}, sent = {};                              // promptKey|norm(answer) -> [prompt as shown, answer, tier] / 1
 let promptAt = 0;                                        // when the current question appeared
+let guess = null;                                        // a prompt with no list: { p, tiers: closest daily prompt's list (null while loading), bad: guesses turned down }
+const guesses = {};                                      // 'date/n' -> that daily prompt's tiers
+let WORDS = null, wordsAsked = false;                    // the word list (data/words.txt), most common first, loaded for the first word prompt
 const shown = {};                                        // tier id -> answers shown
 
-const ask = msg => new Promise((ok, fail) => chrome.runtime.sendMessage(msg, r =>
-  chrome.runtime.lastError ? fail(new Error(chrome.runtime.lastError.message)) : r && r.error ? fail(new Error(r.error)) : ok(r.data)));
+// Reloading the extension leaves this copy running in open tabs with every chrome.* call throwing. Then it stops for good:
+// waits never end (so the loop, typing and clicks stop), nothing touches chrome.*, and the status says so.
+let dead = false;
+function alive() {
+  if (!dead) try { dead = !chrome.runtime.id; } catch { dead = true; }
+  if (dead) status('Extension reloaded. Reload this page.');
+  return !dead;
+}
+const ask = msg => new Promise((ok, fail) => {
+  if (!alive()) return fail(new Error('Extension reloaded.'));
+  try {
+    chrome.runtime.sendMessage(msg, r => chrome.runtime.lastError ? fail(new Error(chrome.runtime.lastError.message)) : r && r.error ? fail(new Error(r.error)) : ok(r.data));
+  } catch (e) { fail(e); }
+});
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const isShown = el => el.offsetParent !== null || el.getClientRects().length > 0;
 // Chrome slows timers in a hidden tab to once a second or less, which would make typing crawl. The service worker
 // isn't slowed, so while this tab is hidden every wait goes through it.
 const localSleep = ms => new Promise(r => setTimeout(r, ms));
-const sleep = ms => (document.hidden ? ask({ type: 'sleep', ms }).catch(() => localSleep(ms)) : localSleep(ms));
+// A service worker that never answers can't hang a wait: the tab's own (slow) timer ends it too.
+const sleep = ms => (!alive() ? new Promise(() => {})
+  : document.hidden ? Promise.race([ask({ type: 'sleep', ms }).catch(() => localSleep(ms)), localSleep(ms + 1000)]) : localSleep(ms));
 const rand = a => a[Math.floor(Math.random() * a.length)];
 let saveTimer = 0;
-const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => chrome.storage.local.set({ settings, learned }), 400); };
+const save = () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { if (alive()) chrome.storage.local.set({ settings, learned, outbox, sent, rejected }).catch(() => {}); }, 400);
+};
 
 // ---- panel ----
 const host = document.createElement('div');
@@ -52,7 +86,8 @@ root.innerHTML = `<style>
   .p { --abyss:#050a14; --deep:#0a1426; --shallow:#101d33; --line:#1b2c47; --line-hi:#2c4168; --foam:#e8f1ff; --drift:#9aaccb; --pink:#ff5d8f;
     --krillion:#ffd166; --deepcut:#9d7bff; --rare:#ff5252; --schooler:#4de3ff; --tooclever:#ff9f43; --plankton:#8fa3c4;
     --pixel: VT323, ui-monospace, monospace; --body: system-ui, "Segoe UI", sans-serif;
-    position: fixed; top: 76px; right: 14px; z-index: 2147483646; width: 330px; max-height: calc(100vh - 96px);
+    position: fixed; top: 76px; right: 14px; z-index: 2147483646; width: 300px; max-height: min(520px, calc(100vh - 96px));
+    min-width: 240px; min-height: 160px; max-width: calc(100vw - 16px); resize: both; overflow: auto;
     display: flex; flex-direction: column; background: rgba(5,10,20,.96); color: var(--foam); border: 1px solid var(--line-hi);
     border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,.55); font: 14px/1.4 var(--body); }
   .p[hidden] { display: none; }
@@ -64,7 +99,7 @@ root.innerHTML = `<style>
   .p.drag { box-shadow: 0 24px 60px rgba(0,0,0,.65); }
   .p.drag .bar { cursor: grabbing; }
   .bar img { width: 26px; height: 26px; }
-  .bar b { font: 400 22px/1 var(--pixel); flex: 1; }
+  .bar b { font: 400 22px/1 var(--pixel); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bar b span { color: var(--krillion); }
   .ib { width: 30px; height: 30px; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: 6px; cursor: pointer; color: var(--drift); }
   .ib:hover { background: var(--shallow); border-color: var(--line); color: var(--foam); }
@@ -93,8 +128,8 @@ root.innerHTML = `<style>
   input[type=range]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
   input[type=range]:focus-visible { outline: none; }
   input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255,93,143,.45); }
-  .ricons { display: flex; justify-content: space-between; }
-  .ricons img { width: 18px; height: 18px; cursor: pointer; transition: opacity .15s ease; }
+  .ricons { display: flex; justify-content: space-between; margin: 0 -3px; } /* 24px icons centered on the 18px thumbs' stops */
+  .ricons img { width: 24px; height: 24px; cursor: pointer; transition: opacity .15s ease; }
   .ricons img.off { opacity: .3; }
   input.one { width: 100%; height: 20px; margin: 0; appearance: none; -webkit-appearance: none; background: none; cursor: pointer; }
   input.one::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; margin: 8px 0;
@@ -105,11 +140,10 @@ root.innerHTML = `<style>
   .body::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
   .body::-webkit-scrollbar-thumb:hover { background-color: var(--drift); }
   .body::-webkit-scrollbar-track { background: transparent; }
-  input[type=search]::-webkit-search-cancel-button { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; cursor: pointer;
-    background: linear-gradient(45deg, transparent 43%, var(--drift) 43%, var(--drift) 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, var(--drift) 43%, var(--drift) 57%, transparent 57%); }
   @media (prefers-reduced-motion: reduce) { .sw input, .sw input::before, input[type=range]::-webkit-slider-thumb { transition: none; } }
   .st { margin: 0; color: var(--drift); font-size: 12.5px; }
   .p.min .body, .p.min .auto { display: none; }
+  .p.min { height: auto !important; min-height: 0; resize: none; }
   .body { overflow-y: auto; padding: 10px 12px 12px; display: grid; gap: 10px; }
   .q { font: 400 22px/1.05 var(--pixel); margin: 0; }
   .meta { margin: 2px 0 0; color: var(--drift); font-size: 12.5px; }
@@ -121,8 +155,6 @@ root.innerHTML = `<style>
   .gem button { font: 400 28px/1 var(--pixel); color: var(--krillion); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; overflow-wrap: anywhere; margin-right: 10px; }
   .gem button:hover { text-decoration: underline; }
   .gem button.said { color: var(--drift); text-decoration: line-through; }
-  .f { width: 100%; padding: 7px 10px; background: var(--deep); border: 1px solid var(--line-hi); border-radius: 6px; }
-  .f:focus { outline: none; border-color: var(--pink); }
   .said-row { color: var(--drift); font-size: 12.5px; margin: 0; }
   .said-row s { color: var(--foam); }
   .t h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; font: 400 20px/1 var(--pixel); color: var(--t); }
@@ -168,6 +200,7 @@ root.innerHTML = `<style>
     <label class="sw">Pre-type<input type="checkbox" role="switch" id="pretype"></label>
     <label class="sw">Make mistakes<input type="checkbox" role="switch" id="mistakes"></label>
     <label class="sw">Auto queue<input type="checkbox" role="switch" id="queue"></label>
+    <label class="sw">Contribute answers<input type="checkbox" role="switch" id="contribute"></label>
     <p class="st" id="st" aria-live="polite"></p>
   </div>
   <div class="body" id="body"></div>
@@ -181,16 +214,25 @@ for (const t of ['keydown', 'keyup', 'keypress']) host.addEventListener(t, ev =>
 $('x').onclick = () => { closed = true; panel.hidden = true; };
 $('min').onclick = () => { collapsed = !collapsed; panel.classList.toggle('min', collapsed); };
 
-// Drag the panel by its title bar. It remembers where you left it and stays on screen when the window shrinks.
+// Drag the panel by its title bar, resize it by its corner. It remembers where you left it and its size, and stays on
+// screen when the window shrinks. Its own size: up to the window's height; the default size: up to 520px.
 function place(pos) {
-  if (!pos) { panel.style.left = panel.style.top = panel.style.right = panel.style.maxHeight = ''; return; }
-  const w = panel.offsetWidth || 330;
-  panel.style.left = Math.min(Math.max(0, pos.x), innerWidth - w) + 'px';
-  const top = Math.min(Math.max(0, pos.y), innerHeight - 44);
+  const s = settings.size, top = pos ? Math.min(Math.max(0, pos.y), innerHeight - 44) : 76, room = `calc(100vh - ${top + 16}px)`;
+  panel.style.width = s ? s.w + 'px' : ''; panel.style.height = s ? s.h + 'px' : '';
+  panel.style.maxHeight = s ? room : pos ? `min(520px, ${room})` : ''; // shrink to fit below where you dropped it
+  if (!pos) { panel.style.left = panel.style.top = panel.style.right = ''; return; }
+  panel.style.left = Math.min(Math.max(0, pos.x), innerWidth - (panel.offsetWidth || 300)) + 'px';
   panel.style.top = top + 'px';
-  panel.style.maxHeight = `calc(100vh - ${top + 16}px)`; // shrink to fit below where you dropped it
   panel.style.right = 'auto';
 }
+// The corner handle writes the new size inline. Pin the left edge (the default hangs off the right) so it grows the way you drag.
+new ResizeObserver(() => {
+  const w = parseInt(panel.style.width), h = parseInt(panel.style.height), s = settings.size;
+  if (!w || !h || (s && s.w === w && s.h === h)) return;
+  const r = panel.getBoundingClientRect();
+  settings.size = { w, h }; settings.pos = settings.pos || { x: Math.round(r.left), y: Math.round(r.top) };
+  place(settings.pos); save();
+}).observe(panel);
 const bar = root.querySelector('.bar');
 let drag = null;
 bar.addEventListener('pointerdown', ev => {
@@ -212,7 +254,7 @@ const drop = () => {
 };
 bar.addEventListener('pointerup', drop);
 bar.addEventListener('pointercancel', drop);
-bar.addEventListener('dblclick', ev => { if (ev.target.closest('button')) return; settings.pos = null; place(null); save(); });
+bar.addEventListener('dblclick', ev => { if (ev.target.closest('button')) return; settings.pos = settings.size = null; place(null); save(); });
 addEventListener('resize', () => place(settings.pos));
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type !== 'toggle') return;
@@ -223,7 +265,7 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 
 function showSettings() {
-  for (const id of ['auto', 'pretype', 'mistakes', 'queue']) $(id).checked = settings[id];
+  for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute']) $(id).checked = settings[id];
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   $('from').value = settings.from; $('to').value = settings.to;
   $('range').style.setProperty('--lo', lo); $('range').style.setProperty('--hi', hi);
@@ -233,10 +275,14 @@ function showSettings() {
   $('speed').value = settings.speed; $('spv').textContent = ['Slow', 'Relaxed', 'Average', 'Quick', 'Fast'][settings.speed - 1];
   $('speed').style.setProperty('--p', `${(settings.speed - 1) * 25}%`);
   $('autoBox').classList.toggle('on', settings.auto);
-  status(settings.auto ? 'On. Waits for your turn.' : 'Off. Click any answer to type it in yourself.');
+  status(settings.auto ? 'On.' : 'Off.');
 }
 const status = text => { if ($('st').textContent !== text) $('st').textContent = text; };
-for (const id of ['auto', 'pretype', 'mistakes', 'queue']) $(id).onchange = () => { settings[id] = $(id).checked; save(); showSettings(); };
+for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute']) $(id).onchange = () => {
+  settings[id] = $(id).checked;
+  if (id === 'contribute' && !settings.contribute) outbox = {}; // switched off: drop what hasn't gone out yet
+  save(); showSettings();
+};
 for (const id of ['from', 'to', 'speed']) $(id).oninput = () => { settings[id] = +$(id).value; save(); showSettings(); };
 // Clicking a tier icon moves the nearer handle to it.
 root.querySelector('.ricons').onclick = ev => {
@@ -247,7 +293,7 @@ root.querySelector('.ricons').onclick = ev => {
 };
 showSettings();
 
-let toastTimer = 0, filterTimer = 0;
+let toastTimer = 0;
 function toast(text) {
   const t = $('toast');
   t.textContent = text; t.classList.add('on');
@@ -257,11 +303,12 @@ function toast(text) {
 // ---- the game's answer box ----
 const setVal = (box, v) => Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v);
 const gameInput = () => [...document.querySelectorAll('input.ds-input')].find(isShown);
-// The answer box when it's your turn: party marks the puffer holder's seat "hold"; the daily shows the box in its form.
+// The answer box when it's your turn: party marks the puffer holder's seat "hold" and the box says "your puffer — type!";
+// the daily shows the box in its form.
 function myTurnBox() {
   const box = gameInput();
   if (!box || box.disabled || box.readOnly || !promptText) return null;
-  if (document.querySelector('.pf-root')) return document.querySelector('.pf-seat.me.hold') ? box : null;
+  if (document.querySelector('.pf-root')) return document.querySelector('.pf-seat.me.hold') || /your puffer/i.test(box.placeholder) ? box : null;
   return box.closest('form') ? box : null;
 }
 // Click an answer: put it in the answer box (you still press Enter) and copy it.
@@ -274,7 +321,7 @@ function useAnswer(text) {
     box.focus();
   }
   navigator.clipboard.writeText(text).catch(() => {});
-  toast(box ? `Typed "${text}". Press Enter to send.` : `Copied "${text}"`);
+  toast(box ? `Typed "${text}"` : `Copied "${text}"`);
 }
 
 // ---- answer lists ----
@@ -289,7 +336,9 @@ function buildSheet(base) {
   }
   return { tiers, keys, archive: !!base };
 }
-const unused = id => sheet ? sheet.tiers[id].filter((a, i) => !used.has(sheet.keys[id][i])) : [];
+const gone = k => used.has(k) || !!bad[k];              // said this round, or turned down on this prompt
+const free = k => !gone(k) && !(k === mine.k && Date.now() - mine.t < 4000);
+const unused = id => sheet ? sheet.tiers[id].filter((a, i) => free(sheet.keys[id][i])) : [];
 
 function learn(answer, tier) {
   const pk = promptKey(promptText), k = norm(answer);
@@ -297,9 +346,38 @@ function learn(answer, tier) {
   const book = learned[pk] || (learned[pk] = {});
   if (book[k]) return false;
   book[k] = [answer, tier];
+  queue(pk + '|' + k, answer, tier);
   save();
   if (sheet && !Object.values(sheet.keys).some(ks => ks.includes(k))) { sheet.tiers[tier].push(answer); sheet.keys[tier].push(k); }
   return true;
+}
+// Your answer turned down. Already said this round: a repeat. Otherwise wrong for this prompt. True if newly recorded.
+function reject(said) {
+  const k = norm(said), pk = promptKey(promptText);
+  if (!k || !pk || used.has(k) || bad[k] || Object.keys(bad).length >= REJECT_MAX) return false;
+  bad[k] = 1; rejected[pk] = bad; save();
+  return true;
+}
+
+// A prompt the archive lacks may be in data/party.json: its tiers join the sheet, its untiered answers go in "more".
+const loadParty = () => partyAsked || (partyAsked = true, ask({ type: 'party' }).then(d => { PARTY = d || []; matchParty(); }, () => { PARTY = []; }));
+function matchParty() {
+  if (!PARTY || archived || entry || !promptText) return;
+  const e = PARTY.find(e => same(e, promptText)); // read off the screen, so the same prompt has the same text
+  if (!e) return;
+  party = e; more = party.more || []; sheet = buildSheet(party.tiers || {});
+  draw();
+}
+// The archive prompt on screen: the same prompt (or its alt wording) only. A close one is a different prompt ("ending in
+// “-gram”" isn't "ending in “-ism”"), except in the daily dive, which always shows one of today's prompts, so there a
+// close match among today's is it.
+const same = (e, p) => [e.t, e.a].some(t => t && promptKey(t) === promptKey(p));
+function archiveMatch(p) {
+  const hit = INDEX.find(e => same(e, p));
+  if (hit || isParty()) return hit || null;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const near = search(INDEX.filter(e => e.d === today), p, 1)[0];
+  return near && near.s >= SURE ? near.e : null;
 }
 
 // ---- drawing ----
@@ -308,43 +386,42 @@ function draw() {
   const was = panel.hidden;
   panel.hidden = !promptText && !opened; // opens by itself once a prompt is on screen
   if (was && !panel.hidden) place(settings.pos); // its width is known now
-  if (!promptText) { body.innerHTML = '<p class="msg">Waiting for a prompt. Start a dive or a party round.</p>'; return; }
+  if (!promptText) { body.innerHTML = '<p class="msg">Waiting for a prompt.</p>'; return; }
   if (!INDEX || !sheet) { body.innerHTML = `<p class="q">${esc(promptText)}</p><p class="msg">Loading answers…</p>`; return; }
 
-  const f = norm(filter);
   const gems = sheet.tiers.krillion;
   const said = [...used.values()];
   const total = TIERS.reduce((s, t) => s + sheet.tiers[t.id].length, 0);
-  const near = !entry ? search(INDEX, promptText, 3) : [];
+  const near = !entry && !party ? closePrompts(promptText) : [];
+  const wrong = Object.keys(bad), left = more.filter(a => !gone(norm(a)) && !inTiers(a));
   body.innerHTML = `
-    <div><p class="q">${esc(promptText)}</p><p class="meta">${entry
-      ? 'Click an answer to type it in.'
-      : total ? 'Party-only prompt. These are answers seen in your games.' : 'Party-only prompt with nothing saved yet. Answers get saved as people say them.'}</p></div>
-    ${near.length ? `<div class="sug"><p class="meta">Or use the list from a close daily prompt:</p>${near.map((m, i) => `<button type="button" data-near="${i}">${esc(m.e.t)}</button>`).join('')}</div>` : ''}
+    <div><p class="q">${esc(promptText)}</p>${entry ? '' : `<p class="meta">${party ? 'Party prompt.' : total ? 'Party-only prompt.' : 'Party-only prompt. Nothing saved yet.'}</p>`}</div>
+    ${near.length ? `<div class="sug"><p class="meta">Close daily prompts:</p>${near.map((m, i) => `<button type="button" data-near="${i}">${esc(m.e.t)}</button>`).join('')}</div>` : ''}
     ${entry || gems.length ? `<div class="gem"><img src="${ICON('krillion')}" alt=""><div>
       <small>One in a Krillion, 100 pts</small>
-      ${gems.length ? gems.map((g, i) => `<button type="button" class="${used.has(sheet.keys.krillion[i]) ? 'said' : ''}" data-a="${esc(g)}">${esc(g)}</button>`).join('')
-        : '<span class="none">No gem on this prompt. Deep Cut is the top score.</span>'}
+      ${gems.length ? gems.map((g, i) => `<button type="button" class="${gone(sheet.keys.krillion[i]) ? 'said' : ''}" data-a="${esc(g)}">${esc(g)}</button>`).join('')
+        : '<span class="none">No gem on this prompt.</span>'}
     </div></div>` : ''}
-    ${total ? `<input class="f" id="f" type="search" placeholder="Filter answers" autocomplete="off" spellcheck="false" value="${esc(filter)}">` : ''}
-    ${said.length ? `<p class="said-row">Already said, hidden: ${said.map(s => `<s>${esc(s)}</s>`).join(', ')}</p>` : ''}
+    ${said.length ? `<p class="said-row">Already said: ${said.map(s => `<s>${esc(s)}</s>`).join(', ')}</p>` : ''}
+    ${wrong.length ? `<p class="said-row">Wrong: ${wrong.map(s => `<s>${esc(s)}</s>`).join(', ')}</p>` : ''}
     ${TIERS.slice(1).map(t => {
       const list = sheet.tiers[t.id], keys = sheet.keys[t.id], all = [];
-      for (let i = 0; i < list.length; i++) if (!used.has(keys[i]) && (!f || keys[i].includes(f))) all.push(list[i]);
-      if (!all.length) return '';
-      const n = shown[t.id] || FIRST;
-      return `<section class="t" style="--t:var(--${t.id})">
-        <h3><img src="${ICON(t.id)}" alt="">${t.name}<em>${t.score} pts</em></h3>
-        <div class="chips">${all.slice(0, n).map(a => `<button type="button" class="c" data-a="${esc(a)}">${esc(a)}</button>`).join('')}</div>
-        ${all.length > n ? `<button type="button" class="more" data-more="${t.id}">Show more</button>` : ''}
-      </section>`;
-    }).join('')}`;
-  const box = $('f');
-  if (box) box.oninput = () => {
-    clearTimeout(filterTimer);
-    filterTimer = setTimeout(() => { filter = box.value; const at = box.selectionStart; draw(); const nb = $('f'); nb.focus(); nb.setSelectionRange(at, at); }, 150);
-  };
+      for (let i = 0; i < list.length; i++) if (!gone(keys[i])) all.push(list[i]);
+      return all.length ? chips(t.id, t.id, `<img src="${ICON(t.id)}" alt="">${t.name}<em>${t.score} pts</em>`, all) : '';
+    }).join('')}
+    ${chips('more', 'drift', 'Unrated', left)}
+    ${!entry && guess && guess.fit.dict && guess.fit.parsed ? chips('words', 'drift', 'Words', words(canGuess, (shown.words || FIRST) + 1)) : ''}`;
   body.querySelectorAll('[data-near]').forEach(b => b.onclick = () => pick(near[+b.dataset.near].e));
+}
+// One list of answer buttons, FIRST more per "Show more".
+function chips(id, color, head, all) {
+  if (!all.length) return '';
+  const n = shown[id] || FIRST;
+  return `<section class="t" style="--t:var(--${color})">
+    <h3>${head}</h3>
+    <div class="chips">${all.slice(0, n).map(a => `<button type="button" class="c" data-a="${esc(a)}">${esc(a)}</button>`).join('')}</div>
+    ${all.length > n ? `<button type="button" class="more" data-more="${id}">Show more</button>` : ''}
+  </section>`;
 }
 body.addEventListener('click', ev => {
   const a = ev.target.closest('[data-a]');
@@ -376,28 +453,40 @@ function scan() {
   const text = readPrompt();
   let changed = false;
   if (text && text !== promptText && INDEX) {
-    promptText = text; promptAt = Date.now(); used = new Map(); filter = ''; pending = null; for (const k in shown) delete shown[k];
-    stale = new WeakMap();
+    promptText = text; promptAt = Date.now(); used = new Map(); pending = null; guess = null; for (const k in shown) delete shown[k];
+    bad = rejected[promptKey(text)] || {}; party = null; more = [];
+    stale = new WeakMap(); settle();
     for (const el of document.querySelectorAll('.pf-say')) stale.set(el, el.textContent.trim());
-    const best = search(INDEX, text, 1)[0];
-    if (best && best.s >= SURE) pick(best.e);
-    else { ver++; entry = null; sheet = buildSheet(null); changed = true; }
+    const best = archiveMatch(text);
+    archived = !!best;
+    if (archived) pick(best);
+    else {
+      ver++; entry = null; sheet = buildSheet(null); changed = true;
+      if (PARTY) matchParty(); else loadParty();
+      if (!TIERS.some(t => sheet.tiers[t.id].length)) loadGuess(); // nothing saved: have a guess list ready for your turn
+    }
   }
   if (promptText) for (const el of document.querySelectorAll('.pf-say.ok, .pf-say.rest')) {
     const said = el.textContent.trim(), k = norm(said);
     if (!k || stale.get(el) === said) continue;
     const tier = (el.style.getPropertyValue('--cc').match(/--tier-([a-z]+)/) || [])[1];
     if (tier && learn(said, tier)) changed = true;
-    if (!used.has(k)) { used.set(k, said); changed = true; }
+    if (!used.has(k)) { used.set(k, said); lockOn(k); changed = true; }
+    if (bad[k]) { delete bad[k]; save(); } // the game took it: it wasn't wrong after all
   }
+  // Your bubble turned down what you last sent (you or auto answer): wrong unless already said (reject checks).
+  const no = promptText && document.querySelector('.pf-seat.me .pf-say.bad');
+  if (no) { const said = no.textContent.trim(); if (stale.get(no) !== said && norm(said) === mine.k && reject(said)) changed = true; }
   if (changed) draw();
 }
-// Your own answer: what's in the game's box when Enter goes down (yours or auto answer's).
+// Your own answer: what's in the game's box when Enter goes down (yours or auto answer's). In party it counts once your
+// bubble shows it accepted (scan); the daily shows no verdict, so there it counts now.
 document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' || !promptText || !ev.target.matches || !ev.target.matches('input.ds-input')) return;
   if (ev.isTrusted) takeOver('you sent an answer yourself');
   const said = ev.target.value.trim(), k = norm(said);
-  if (k && !used.has(k)) { used.set(k, said); setTimeout(draw, 0); }
+  if (k && isParty()) mine = { k, t: Date.now() };
+  else if (k && !used.has(k)) { used.set(k, said); setTimeout(draw, 0); }
 }, true);
 
 // ---- auto answer ----
@@ -413,6 +502,7 @@ function nearKey(ch) {
   return null;
 }
 const keyMs = () => KEY_MS[settings.speed - 1] * (0.6 + Math.random() * 0.8);
+let typed = { v: '', p: '' };                            // what auto answer or pre-type left in the game's box, and for which prompt
 function press(box, key) {
   box.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
   if (key === 'Backspace') {
@@ -423,6 +513,38 @@ function press(box, key) {
     box.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: key }));
   }
   box.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
+  typed = { v: box.value, p: promptText };
+}
+// Sending. The game may miss a send (seen with pre-typed answers), so the sender, run by tick() whatever auto answer or
+// pre-type are waiting on, presses send every 250 ms (Enter and the SEND button in turn) while it's your turn, the box
+// still holds the answer to send and your bubble shows no verdict on it. A verdict (ok, rest or bad; "caret" is just live
+// typing), the box changing, or the turn moving on: it went through, never again.
+let toSend = '', sendAt = 0, sends = 0, turnAt = 0;      // turnAt: when your turn started
+const verdict = v => { const b = document.querySelector('.pf-seat.me .pf-say:is(.ok, .rest, .bad)'); return !!b && b.textContent.trim().toLowerCase() === v; };
+function sender(box) {
+  const v = box && box.value;
+  if (!settings.auto || !v || verdict(v) || Date.now() < sendAt) return;
+  // A pre-typed answer auto answer hasn't sent 2 s into your turn: send it anyway.
+  const stuck = v === typed.v && !!pending && v === pending.toLowerCase() && !used.has(norm(v)) && Date.now() - turnAt > 2000 && Date.now() - promptAt >= READ_MS;
+  if (v !== toSend && !stuck) return;
+  sendAt = Date.now() + 250;
+  box.dispatchEvent(new Event('input', { bubbles: true })); // the page may have dropped its copy of the value
+  const b = sends++ % 2 ? sendBtn(box) : null;
+  if (b) b.click(); else pressEnter(box);
+}
+// Hands the answer to the sender and waits (up to 3 s) for it to go through.
+async function send(box, said) {
+  toSend = said; sendAt = 0;
+  sender(box);
+  for (let i = 0; i < 12 && myTurnBox() === box && box.value === said && !verdict(said); i++) await sleep(250);
+}
+// The visible SEND button near the answer box, and no other.
+function sendBtn(box) {
+  for (let el = box.parentElement, i = 0; el && i < 3; el = el.parentElement, i++) {
+    const b = [...el.querySelectorAll('button')].find(b => isShown(b) && !b.disabled && /^\W*send\W*$/i.test(b.textContent));
+    if (b) return b;
+  }
+  return null;
 }
 function pressEnter(box) {
   const down = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
@@ -454,18 +576,103 @@ async function clearBox(box, still = () => true) { while (box.value && still()) 
 function chooseAnswer() {
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   let pools = LOW_TO_HIGH.slice(lo, hi + 1).map(t => unused(t.id)).filter(p => p.length);
-  if (!pools.length) { // nothing left in range: the closest tier outside it that has answers
+  if (!pools.length) { // nothing left in range: party.json's untiered answers (most common first), then the closest tier outside it
+    const m = more.find(a => free(norm(a)) && !inTiers(a));
+    if (m) return m;
     const dist = i => (i < lo ? lo - i : i - hi);
     const out = LOW_TO_HIGH.map((t, i) => ({ i, p: unused(t.id) })).filter(x => x.p.length && (x.i < lo || x.i > hi)).sort((a, b) => dist(a.i) - dist(b.i));
     pools = out.length ? [out[0].p] : [];
   }
-  if (!pools.length) return null;
-  const pool = rand(pools), short = pool.filter(a => a.length <= SHORT);
-  return rand(short.length ? short : pool);
+  return pools.length ? pickShort(rand(pools)) : null;
+}
+const pickShort = pool => { const short = pool.filter(a => a.length <= SHORT); return rand(short.length ? short : pool); };
+
+// The 3 closest daily prompts on the same topic: they share a topic word ("movie", "city"), not just "used in" or a word
+// in a "(like …)" example. "Name a term used in baseball" isn't "Name a sauce used in Asian cooking".
+const STOP = new Set(('name type kind thing things something someone word words english term terms used use from with that this the and for you ' +
+  'your would could find found like other any one can has have are was were its not more than made known famous popular common etc').split(' '));
+const stem = w => w.replace(/ies$/, 'y').replace(/(xes|ches|shes|sses)$/, m => m.slice(0, -2)).replace(/([^s])s$/, '$1');
+const topics = s => new Set(norm(s.replace(/\(like[^)]*\)/gi, ' ')).split(' ').filter(w => w.length >= 3 && !STOP.has(w)).map(stem));
+function closePrompts(p) {
+  const mine = topics(p);
+  return search(INDEX, p, 40).filter(({ e }) => [...topics(`${e.t} ${e.a || ''}`)].some(w => mine.has(w))).slice(0, 3);
+}
+// A prompt with no list: guesses come from the 3 closest daily prompts' lists, 2 tries from each, most common first; a word
+// prompt's only from the word list. Only auto answer and pre-type use them, so the panel, the sheet and contribute stay as
+// they were; answers the game accepts get learned from the bubbles as usual.
+function loadGuess() {
+  const g = guess = { p: promptText, lists: [], tried: new Set(), fit: fits(promptText) };
+  if (g.fit.dict && g.fit.parsed) loadWords();
+  if (g.fit.word) return;
+  closePrompts(promptText).forEach(({ e }, i) => {
+    const id = `${e.d}/${e.p}`;
+    g.lists[i] = guesses[id] || null;
+    if (!guesses[id]) ask({ type: 'prompt', d: e.d, p: e.p }).then(d => { g.lists[i] = guesses[id] = d.tiers || {}; }, () => { g.lists[i] = {}; });
+  });
+}
+// What the prompt asks of an answer's letters: "starting with “scr”", "ending in -graphy", "with “bio” in it", "three or
+// more S's", "exactly two Z's", "a 10-letter word", "5 or more letters", "a double “o”", "double letters", "no “e”",
+// "without the letter E", "no vowels", "starts and ends with the same letter", "palindrome". Guesses must pass them all.
+// word: says "word", so only the word list answers it. dict: the word list may (a word prompt, or a hyphen form).
+// parsed: a rule was read. An unquoted letter ("starts with a silent K") isn't a rule.
+const NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+function fits(p) {
+  const Q = `["'“‘]([^"'”’]+)["'”’]`, N = `(\\d+|${NUMS.join('|')})`, C = `["“‘']?([a-z])["”’']?(?:['’]?s)?\\b`;
+  const word = /\bwords?\b/i.test(p), rules = [], re = s => p.match(RegExp(s, 'i'));
+  const n = s => (/\d/.test(s) ? +s : NUMS.indexOf(s.toLowerCase())), count = (w, c) => w.split(c.toLowerCase()).length - 1;
+  let hyphen = false, m;
+  if ((m = re(`\\b(start|begin|end|contain)\\w*(?: with| in)?(?: the letters?)? (?:${Q}|(-\\w+|\\w+-)(?!\\w))`) || re(`\\b(with) (?:${Q}|(\\w+)) in it\\b`))
+    && !(/^with$/i.test(m[1]) && m[3] && !word)) {
+    const raw = m[2] || m[3], x = norm(raw), how = { start: 'startsWith', begin: 'startsWith', end: 'endsWith' }[m[1].toLowerCase()] || 'includes';
+    hyphen = /^-|-$/.test(raw.trim());
+    if (x) rules.push(w => w[how](x));
+  }
+  if ((m = re(`${N} or more ${C}`) || re(`at least ${N} ${C}`))) { const [, k, c] = m; rules.push(w => count(w, c) >= n(k)); }
+  if ((m = re(`exactly ${N} ${C}`))) { const [, k, c] = m; rules.push(w => count(w, c) === n(k)); }
+  if ((m = re(`${N} or more letters|at least ${N} letters`))) { const k = n(m[1] || m[2]); rules.push(w => w.length >= k); }
+  else if ((m = re(`${N} or (?:fewer|less) letters|at most ${N} letters|${N} letters or (?:fewer|less)`))) { const k = n(m[1] || m[2] || m[3]); rules.push(w => w.length <= k); }
+  else if ((m = re(`exactly ${N} letters|${N}[- ]letters?\\b`))) { const k = n(m[1] || m[2]); rules.push(w => w.length === k); }
+  if ((m = re(`double ${C}`))) { const c = m[1].toLowerCase(); rules.push(w => w.includes(c + c)); }
+  else if (re('double letters?')) rules.push(w => /(.)\1/.test(w));
+  if (re('\\b(?:no|without(?: any)?) vowels\\b')) rules.push(w => !/[aeiou]/.test(w));
+  else if ((m = re(`\\b(?:no|without) (?:the letter |letter |an? )?${C}`))) { const c = m[1].toLowerCase(); rules.push(w => !w.includes(c)); }
+  if (re('\\b(?:start|begin)s? and ends? with the same letter')) rules.push(w => w[0] === w[w.length - 1]);
+  if (re('palindrom')) rules.push(w => w === [...w].reverse().join(''));
+  return Object.assign(a => rules.every(r => r(norm(a))), { word, dict: word || hyphen, parsed: rules.length > 0 });
+}
+const loadWords = () => wordsAsked || (wordsAsked = true, ask({ type: 'words' }).then(t => { WORDS = t.split('\n'); draw(); }, () => { WORDS = []; }));
+// The first n words in the word list that pass ok.
+const words = (ok, n) => { const out = []; for (const w of WORDS || []) if (ok(w) && out.push(w) >= n) break; return out; };
+const canGuess = a => free(norm(a)) && guess.fit(a);
+// An unused guess that fits the prompt, never one turned down on this prompt (free): 2 from each close list in order (so 6 at
+// most a prompt), each list's most common first (common tiers first: likelier to be accepted). Then, if the word list may
+// answer it, a common word: a random one of the first 10 that fit. No cap a turn: it keeps trying until the turn ends.
+function guessAnswer() {
+  if (entry || !INDEX) return null;
+  if (!guess) loadGuess();
+  const locked = guess.lock !== undefined;
+  for (const [i, list] of guess.lists.entries()) {
+    if (!list) return null; // still loading: keep the order
+    const all = flat(list), a = all.find(canGuess);
+    if (a && (locked ? i === guess.lock : all.filter(x => guess.tried.has(norm(x))).length < 2)) return a;
+  }
+  return !locked && guess.fit.dict && guess.fit.parsed ? rand(words(canGuess, 10)) || null : null;
+}
+const flat = list => LOW_TO_HIGH.flatMap(t => (list || {})[t.id] || []); // most common first
+// An answer the game accepted (anyone's) is on a close list: that list is the right one. Guess only from it from now on,
+// and don't give up.
+function lockOn(k) {
+  if (!guess || guess.lock !== undefined) return;
+  const i = guess.lists.findIndex(l => flat(l).some(a => norm(a) === k));
+  if (i >= 0) guess.lock = i;
 }
 
 const think = () => THINK_MS[settings.speed - 1] * (0.7 + Math.random() * 0.6);
 const isParty = () => !!document.querySelector('.pf-root');
+const inTiers = a => Object.values(sheet.keys).some(ks => ks.includes(norm(a)));
+const onSheet = a => inTiers(a) || more.some(m => norm(m) === norm(a)); // false: a guess
+// A status about this prompt's answers ("Guessing "x"", "No good guess.") goes back to On./Off. once it's out of date.
+const settle = () => { if (/"|^No |^Loading a guess/.test($('st').textContent)) status(settings.auto ? 'On.' : 'Off.'); };
 
 async function autoAnswer(box) {
   const p = promptText, still = () => settings.auto && myTurnBox() === box && readPrompt() === p;
@@ -478,46 +685,88 @@ async function autoAnswer(box) {
   let answer;
   if (preTyped && ready.startsWith(box.value)) {
     answer = pending;
-    status(`Sending pre-typed "${ready}"`);
+    status(`Sending "${ready}"`);
     if (!await typeOut(box, ready.slice(box.value.length), still)) return; // finish it if pre-type got cut off
   } else {
     pending = null;
     if (box.value) await clearBox(box, still);
+    answer = chooseAnswer() || guessAnswer();
+    if (!answer) { status(!guess ? 'No answers left.' : guess.lists.includes(null) || (guess.fit.dict && guess.fit.parsed && !WORDS) ? 'Loading a guess.' : 'No good guess.'); return; }
     const repeats = [...used.values()].slice(0, -2); // never the answer that was just said
-    if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then: try something said earlier, get turned down, move on
+    if (settings.mistakes && repeats.length && Math.random() < 0.06) { // now and then (with something to send after): try something said earlier, get turned down, move on
       const r = rand(repeats).toLowerCase();
-      status(`Mistake on purpose: "${r}" was already said.`);
+      status(`Repeating "${r}" on purpose.`);
       if (!await typeOut(box, r, still)) return;
       pressEnter(box);
       await sleep(900 + Math.random() * 400);
       if (!still()) return;
       await clearBox(box, still);
     }
-    answer = chooseAnswer();
-    if (!answer) { status('No unused answers known for this prompt. Type one yourself.'); return; }
-    status(`Typing "${answer.toLowerCase()}"`);
+    status(`${onSheet(answer) ? 'Typing' : 'Guessing'} "${answer.toLowerCase()}"`);
     if (!await typeOut(box, answer.toLowerCase(), still)) return;
   }
   await sleep(keyMs() * 2);
   if (!still()) return;
   pending = null;
-  pressEnter(box);
-  status(`Sent "${answer.toLowerCase()}". Waiting for your next turn.`);
-  // Wait for the game's verdict, up to 1.5 s: the puffer moves on, or your bubble shows the answer turned down.
   const said = answer.toLowerCase();
+  await send(box, said);
+  if (!onSheet(answer) && guess) guess.tried.add(norm(answer));
+  status(`Sent "${said}"`);
+  // Wait for the game's verdict, up to 1.5 s: the puffer moves on, or your bubble shows the answer turned down.
   const turnedDown = () => { const b = document.querySelector('.pf-seat.me .pf-say.bad'); return !!b && b.textContent.trim().toLowerCase() === said; };
   for (let i = 0; i < 10 && still() && !turnedDown(); i++) await sleep(150);
+  if (promptText === p && turnedDown() && reject(said)) draw(); // don't try it again on this prompt
 }
-// Auto queue: when a party game ends, click "Play again" after a moment.
-let queueAt = 0;
+// Auto queue: when a party game ends, click "Play again" after a moment. Kicked for idling: click "Take a seat" the same way.
+// Your room filled up after that: go to the lobby and click Quick Play (once; never Rated, never "Leave room").
+const QUEUE = { again: ['Game over. Queuing again.', 'Clicked Play again.'], seat: ['Taking a seat.'] };
+let queueAt = 0, queueFor = '', seatAt = 0;               // seatAt: when auto queue clicked Take a seat, until you're seated
+const shownBtn = (sel, re) => [...document.querySelectorAll(sel)].find(b => isShown(b) && !b.disabled && re.test(b.textContent));
+const playAgain = () => shownBtn('button.ds-next-btn', /play again/i);
+const seatBtn = () => shownBtn('button.ds-begin-btn', /take a seat/i);
+// Take a seat with text matching re near it.
+function seatBtnBy(re) {
+  const b = seatBtn();
+  for (let el = b && b.parentElement, i = 0; el && i < 4; el = el.parentElement, i++) if (re.test(el.innerText)) return b;
+  return null;
+}
+// Only with the kick message near the button (not the lobby's join screen), and your name still in the name box.
+function takeSeat() { const name = gameInput(); return name && !name.value.trim() ? null : seatBtnBy(/kicked for being idle/i); }
+// The lobby trip survives the page load in sessionStorage, for 30 s.
+const FULL = 'krSolverFull', QUICK = 'krSolverQuick', HOLD = 30000;
+const since = k => Date.now() - (+sessionStorage.getItem(k) || 0);
+function toLobby() {
+  if (since(FULL) < HOLD) return status('Room full.'); // went to the lobby a moment ago
+  sessionStorage.setItem(FULL, Date.now());
+  status('Room full. Quick Play.');
+  (globalThis.__krGo || (u => location.assign(u)))('https://krillion.io/party'); // the test page stands in for the page load
+}
+function quickPlay() {
+  if (since(FULL) > HOLD) return;
+  if (/leave that room before joining/i.test(document.body.innerText)) { sessionStorage.removeItem(FULL); return status('Still in a room. Stopped.'); }
+  const b = since(QUICK) > HOLD && shownBtn('button', /^\W*quick play\W*$/i);
+  if (!b) return;
+  sessionStorage.setItem(QUICK, Date.now());
+  b.click();
+  status('Clicked Quick Play.');
+}
 function autoQueue() {
-  const btn = [...document.querySelectorAll('button.ds-next-btn')].find(b => isShown(b) && !b.disabled && /play again/i.test(b.textContent));
-  if (!btn) { queueAt = 0; return; }
-  if (!queueAt) { queueAt = Date.now() + 1500 + Math.random() * 1500; status('Game over. Queuing again in a moment.'); return; }
-  if (Date.now() < queueAt) return;
+  if (seatAt) { // after Take a seat: seated, the room is full, or nothing for a while
+    if (document.querySelector('.pf-seat.me') && !seatBtn()) { seatAt = 0; status('Took a seat.'); }
+    else if (seatBtnBy(/this room is full/i)) { seatAt = 0; toLobby(); }
+    else if (Date.now() - seatAt > 8000) { seatAt = 0; status('Not seated.'); }
+  }
+  const btn = playAgain() || takeSeat(), kind = !btn ? '' : btn.matches('.ds-begin-btn') ? 'seat' : 'again';
+  if (kind !== queueFor) { // a button showed up or went away
+    if (queueFor && $('st').textContent === QUEUE[queueFor][0]) status(settings.auto ? 'On.' : 'Off.'); // gone before the click
+    queueFor = kind; queueAt = Date.now() + 1500 + Math.random() * 1500;
+    if (kind) status(QUEUE[kind][0]);
+    return;
+  }
+  if (!kind || Date.now() < queueAt) return;
   queueAt = Date.now() + 5000; // one click, then wait for the page to move on
   btn.click();
-  status('Clicked Play again.');
+  if (kind === 'seat') seatAt = Date.now(); else status(QUEUE.again[1]);
 }
 
 // Pre-type (party only): while someone else holds the puffer, keep one unused answer typed in the box, ready to send.
@@ -528,11 +777,11 @@ async function pretype(box) {
   const want = pending && !used.has(norm(pending)) ? pending.toLowerCase() : null;
   if (want && box.value === want) return; // ready
   if (box.value) {
-    if (pending) status(`"${pending.toLowerCase()}" was just said. Typing another.`);
+    if (pending) status(`"${pending.toLowerCase()}" was said. Typing another.`);
     await clearBox(box, still);
     if (!still()) return;
   }
-  pending = chooseAnswer();
+  pending = chooseAnswer() || guessAnswer();
   if (!pending) return;
   await sleep(think());
   if (!still()) return;
@@ -540,25 +789,73 @@ async function pretype(box) {
   const target = pending.toLowerCase();
   const done = await typeOut(box, target, still);
   // The game may not keep text typed before your turn; then stop trying for this question.
-  if (done && box.value !== target) { pretypeBlocked = p; pending = null; status('The game clears the box before your turn here, so pre-type is paused for this question.'); }
-  else if (done) status(`Pre-typed "${target}". Sends on your turn.`);
+  if (done && box.value !== target) { pretypeBlocked = p; pending = null; status('Pre-type paused: the game clears the box.'); }
+  else if (done) status(`Pre-typed "${target}"`);
+}
+
+// Contribute answers: newly learned party answers wait in the outbox until the collector takes them.
+const SEND_MAX = 50, OUTBOX_MAX = 1000, FLUSH_MS = 5 * 60 * 1000;
+let flushing = false, flushAt = 0, over = false;
+function queue(key, answer, tier) {
+  const n = Object.keys(outbox).length;
+  if (!settings.contribute || archived || sent[key] || outbox[key] || answer.length > 100 || n >= OUTBOX_MAX) return;
+  if (!n) flushAt = Math.max(flushAt, Date.now() + FLUSH_MS); // the first one waits for game end or a few minutes
+  outbox[key] = [promptText, answer, tier];
+}
+async function flush() {
+  const keys = Object.keys(outbox).slice(0, SEND_MAX);
+  if (flushing || !keys.length) return;
+  flushing = true; flushAt = Date.now() + FLUSH_MS;
+  const items = [];
+  for (const [prompt, answer, tier] of keys.map(k => outbox[k])) {
+    let it = items.find(i => i.prompt === prompt);
+    if (!it) items.push(it = { prompt, answers: [] });
+    it.answers.push({ answer, tier });
+  }
+  try {
+    await ask({ type: 'contribute', items });
+    for (const k of keys) { delete outbox[k]; sent[k] = 1; }
+    if (Object.keys(outbox).length) flushAt = Date.now() + 2000; // more left: the next batch goes soon
+    save();
+  } catch {} finally { flushing = false; } // failed: it stays in the outbox for the next try
 }
 
 function tick() {
-  if (settings.queue) autoQueue();
-  if (!settings.auto || busy) return;
-  const box = myTurnBox();
+  if (settings.queue) { autoQueue(); quickPlay(); } else queueFor = '';
+  if (settings.contribute) { const end = !!playAgain(); if ((end && !over) || Date.now() >= flushAt) flush(); over = end; }
+  const box = myTurnBox(), out = document.querySelector('.pf-seat.me.out');
+  if (out) settle();
+  turnAt = box ? turnAt || Date.now() : 0;
+  sender(box); // before the busy check: nothing auto answer or pre-type wait on can hold up a send
+  debug(box);
+  if (busy && Date.now() - busyAt > 15000) busy = false; // watchdog: nothing should take this long
+  if (busy) return;
+  // The question changed (or went away) with our text still in the box: delete it now. Text you typed isn't ours.
+  const left = gameInput();
+  if (left && left.value && left.value === typed.v && typed.p !== readPrompt()) {
+    pending = null;
+    return run(() => clearBox(left));
+  }
+  if (!settings.auto) return;
   if (box) {
-    if (!sheet) { status('Your turn, but the answer list is still loading.'); return; }
-    busy = true;
-    autoAnswer(box).catch(() => {}).finally(() => { busy = false; });
-    return;
+    if (!sheet) { status('Answer list still loading.'); return; }
+    return run(() => autoAnswer(box));
   }
-  const early = settings.pretype && isParty() && sheet && gameInput();
-  if (early && !early.disabled && pretypeBlocked !== promptText && Date.now() - promptAt >= READ_MS) {
-    busy = true;
-    pretype(early).catch(() => {}).finally(() => { busy = false; });
-  }
+  const early = !out && settings.pretype && isParty() && sheet && gameInput();
+  if (early && !early.disabled && pretypeBlocked !== promptText && Date.now() - promptAt >= READ_MS) run(() => pretype(early));
+}
+// Runs one job at a time (busy until it ends). A job the watchdog gave up on doesn't clear the next one's busy.
+let busyAt = 0;
+function run(job) {
+  const at = busyAt = Date.now();
+  busy = true;
+  job().catch(() => {}).finally(() => { if (busyAt === at) busy = false; });
+}
+// What auto answer thinks, for testing on the real page: <html data-kr-debug="turn=1 busy=0 typed=… verdict=… sends=N">.
+function debug(box) {
+  const b = document.querySelector('.pf-seat.me .pf-say:is(.ok, .rest, .bad)');
+  const d = `turn=${box ? 1 : 0} busy=${busy ? 1 : 0} typed=${typed.v} send=${toSend} verdict=${b ? `${b.className.match(/\b(ok|rest|bad)\b/)[1]}:${b.textContent.trim()}` : '-'} sends=${sends}`;
+  if (document.documentElement.dataset.krDebug !== d) document.documentElement.dataset.krDebug = d;
 }
 
 // You take over: typing in the game's box yourself, or clicking an answer, switches auto answer off.
@@ -572,17 +869,21 @@ function takeOver(why) {
 document.addEventListener('input', ev => { if (ev.isTrusted && ev.target.matches && ev.target.matches('input.ds-input')) takeOver('you typed'); }, true);
 
 // ---- start ----
-// One loop reads the page and runs auto answer and auto queue, about 7 times a second, hidden tab included.
+// One loop reads the page and runs auto answer, auto queue and contribute, about 7 times a second, hidden tab included.
 (async () => {
   for (;;) {
+    if (!alive()) return; // left behind by an extension reload
     try { scan(); tick(); } catch (e) { console.warn('Krillion Solver:', e); }
-    await (settings.auto || settings.queue ? sleep(150) : localSleep(150));
+    await (settings.auto || settings.queue || settings.contribute ? sleep(150) : localSleep(150));
   }
 })();
 
-chrome.storage.local.get(['settings', 'learned']).then(s => {
+Promise.resolve().then(() => chrome.storage.local.get(['settings', 'learned', 'outbox', 'sent', 'rejected'])).then(s => {
   if (s.settings) settings = { ...settings, ...s.settings };
   if (s.learned) learned = s.learned;
+  if (s.rejected) rejected = s.rejected;
+  if (s.outbox) outbox = s.outbox;
+  if (s.sent) sent = s.sent;
   showSettings();
   place(settings.pos);
   return ask({ type: 'index' });

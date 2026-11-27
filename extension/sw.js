@@ -5,6 +5,8 @@ importScripts('match.js');
 const { TIERS } = KrMatch;
 const FIRST_DAY = '2026-07-16';
 const RETRY_MS = 10 * 60 * 1000; // wait before asking krillion.run again for a day it didn't have
+// The collector's Apps Script web app URL (see collector/README.md). Empty: "Contribute answers" sends nothing.
+const CONTRIBUTE_URL = 'https://script.google.com/macros/s/AKfycbz0n0fWcs1GwbZi0MFAOv7ymTW-v5jEgY8n0lRvlymPF8ueUirg96Ecfdu8PsIxHpVE/exec';
 
 let bundled = null;           // index.json
 const fresh = new Map();      // date -> { entries, prompts } fetched from krillion.run
@@ -42,9 +44,30 @@ async function prompt(d, p) {
   return getJSON(chrome.runtime.getURL(`data/${d}/p${p}.json`));
 }
 
+// The word list (data/words.txt) as one string. The panel asks once per page and keeps it.
+async function wordList() {
+  const r = await fetch(chrome.runtime.getURL('data/words.txt'));
+  if (!r.ok) throw new Error(`words.txt: ${r.status}`);
+  return r.text();
+}
+
+// Party prompts the archive lacks, with answers (data/party.json, made by ../party.js). Missing: none.
+let partyList = null;
+const party = async () => partyList = partyList || await getJSON(chrome.runtime.getURL('data/party.json')).catch(() => []);
+
+// Sends { items: [{ prompt, answers: [{ answer, tier }] }] }. text/plain skips the CORS preflight Apps Script can't answer.
+async function contribute(items) {
+  if (!CONTRIBUTE_URL) throw new Error('no collector URL set');
+  const r = await fetch(CONTRIBUTE_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ items }) });
+  const j = r.ok ? await r.json() : null;
+  if (!j || !j.ok) throw new Error(`collector: ${r.status} ${j ? j.error : ''}`);
+  return true;
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   // "sleep": the panel's timer while its tab is hidden (Chrome slows a hidden tab's own timers, not this worker's).
   const job = msg.type === 'index' ? index() : msg.type === 'prompt' ? prompt(msg.d, msg.p)
+    : msg.type === 'contribute' ? contribute(msg.items) : msg.type === 'words' ? wordList() : msg.type === 'party' ? party()
     : msg.type === 'sleep' ? new Promise(r => setTimeout(() => r(true), Math.min(Math.max(+msg.ms || 0, 0), 10000))) : null;
   if (!job) return false;
   job.then(data => reply({ data }), err => reply({ error: String(err) }));

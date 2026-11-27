@@ -7,7 +7,9 @@
   "host_permissions": [
     "https://krillion.io/*",
     "https://*.krillion.io/*",
-    "https://krillion.run/data/*"
+    "https://krillion.run/data/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
   ],
   "background": { "service_worker": "sw.js" },
   "action": {

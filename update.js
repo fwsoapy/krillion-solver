@@ -208,6 +208,9 @@ async function main() {
   }
   if (!index.length) throw new Error('no days built; data/ left as it was');
   fs.writeFileSync(path.join(TMP, 'index.json'), JSON.stringify(index));
+  for (const f of ['party.json', 'words.txt']) { // made by party.js and build.js, not by this
+    if (fs.existsSync(path.join(OUT, f))) fs.copyFileSync(path.join(OUT, f), path.join(TMP, f));
+  }
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.renameSync(TMP, OUT);
   const answers = index.reduce((s, e) => s + e.c.reduce((a, b) => a + b, 0), 0);

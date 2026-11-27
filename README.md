@@ -12,13 +12,14 @@ It covers every daily dive since dive #1 on July 16, 2026.
 
 `extension/` is a Chrome extension for krillion.io. It reads the prompt off your screen in the daily dive and in Puffer Party and opens a panel with the answers.
 
-- **Crosses off used answers.** In Puffer Party it watches the other players' bubbles and hides every answer someone already gave. Yours drop off when you press Enter.
+- **Crosses off used answers.** In Puffer Party it watches the other players' bubbles and hides every answer someone already gave. Yours drop off once the game accepts them, so a turned-down answer stays on the list. In the daily dive they drop off when you press Enter.
 - **Learns party prompts.** Party mode has prompts the daily dive never used. The extension saves every accepted answer it sees, with its tier, so the next time that prompt comes up you get a list.
-- **Auto answer** (off by default). On your turn it picks a random unused answer from the tier range you set, types it one key at a time at the speed you pick, and presses Enter. A new question stays up 2 seconds before it starts typing, so you can read it. Switch on "Make mistakes" and it makes typos it backspaces and fixes, and now and then tries an answer said earlier (never the one just said). Keep it to unrated rooms: in rated ones you move other people's ratings.
+- **Auto answer** (off by default). On your turn it picks a random unused answer from the tier range you set, types it one key at a time at the speed you pick, and presses Enter. A new question stays up 2 seconds before it starts typing, so you can read it. Switch on "Make mistakes" and it makes typos it backspaces and fixes, and now and then tries an answer said earlier (never the one just said). On a prompt with no list, it guesses from the closest daily prompt's list. Keep it to unrated rooms: in rated ones you move other people's ratings.
 - **Pre-type** (party, off by default) types your next answer while someone else holds the puffer, so it goes out the moment the puffer reaches you. If another player says that answer first, it deletes it and types a new one.
 - Auto answer types in lowercase. Type in the game's box yourself, or click an answer in the panel, and auto answer switches off on the spot.
-- **Auto queue** (off by default) clicks Play again when a party game ends.
-- It keeps working in a background tab or a minimized window. Chrome slows a hidden tab's timers, so the extension times its typing from its background worker instead.
+- **Auto queue** (off by default) clicks Play again when a party game ends, and takes your seat back if the game kicks you for idling, or joins another room with Quick Play if yours filled up.
+- **Contribute answers** (off by default) sends the answers you see on party prompts that have no daily list to the project, so those prompts can get lists for everyone. It sends the prompt, the answer and its tier, nothing about you or the other players. Each answer goes once, at the end of a game or every few minutes, 50 per request with a backlog sent in quick batches. The answers land in a Google Sheet; [`collector/`](collector/README.md) has the script and how to set it up.
+- It keeps working in a background tab or a minimized window. Chrome slows a hidden tab's timers, so the extension times its typing and contributing from its background worker instead.
 - Click any answer to type it into the game's box.
 - Drag the panel by its title bar. Double-click the title to put it back.
 
@@ -39,6 +40,10 @@ Krillion doesn't publish its answer sheets, so `update.js` merges three fan arch
 - [The Word Finder](https://www.thewordfinder.com/misc-solvers/krillion-answers/) covers the one day krillion.run lacks (Nov 3)
 
 Each tier lists the most common answers first, 20 at a time. Where The Word Finder has the real top 10 most-typed answers (the last month), those lead. The rest go by how familiar their words are, using an English word-frequency list ([FrequencyWords](https://github.com/hermitdave/FrequencyWords), CC BY-SA 4.0), the same kind of data Krillion uses to set tiers. It works well for words and names and less well for titles made of everyday words, like a horror film called "They".
+
+The extension also bundles a word list made from the same FrequencyWords list (CC BY-SA 4.0), kept in `data/words.txt`. It answers party prompts like "Name an English word containing “bio”" that have no answer list.
+
+Party answers (`data/party.json`) come from the opt-in collector sheet plus generated answer lists in `collector/generated/`. `collector/sheet.json` is a snapshot of the sheet. To refresh: export the sheet to `collector/sheet.json` (`{ "prompt": ["answer/T"] }`, T = K, D, R, S, T or P from One in a Krillion down to Plankton), then run `node party.js` and `node build.js`.
 
 The last 29 days match The Word Finder's official counts to within a handful of answers. 17 small prompts, like "Name a country that borders Brazil", have no gem in any source. The game seems to skip the gem on short closed lists, and the solver says so.
 
