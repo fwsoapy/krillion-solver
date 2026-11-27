@@ -1,8 +1,10 @@
 name: Update answers
 on:
   schedule:
-    - cron: '30 6 * * *'  # 1:30 am New York, after the new dive starts
-    - cron: '30 17 * * *' # again at 12:30 pm, in case the sources post the day late
+    # Every 3 hours, since GitHub skips some scheduled runs. Safe to run often:
+    # update.js never lets a day go backwards and only commits when data changed.
+    # Minute 17 on purpose: GitHub drops more runs at :00.
+    - cron: '17 */3 * * *'
   workflow_dispatch:
 permissions:
   contents: write
