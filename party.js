@@ -54,15 +54,22 @@ function build() {
     for (const a of list) { const k = norm(a); if (k && !p.seen.has(k)) { p.seen.add(k); p.more.push(String(a).trim()); } }
   }
 
+  // collector/party-classic.json: { party prompt: classic prompt id }, the same question checked by hand. The official
+  // sheet's tiers go first, then collected answers it lacks; more keeps only answers in no tier.
+  const pcFile = path.join(dir, 'party-classic.json'), clFile = path.join(__dirname, 'data', 'classic.json');
+  const pc = fs.existsSync(pcFile) ? read(pcFile) : {}, classic = fs.existsSync(clFile) ? read(clFile).prompts || {} : {};
+  let enriched = 0;
   const out = [...byKey.values()].map(({ t, tiers, more, wrong }) => {
     const ok = a => !wrong.has(norm(a)); // W answers leave the tiers and more
-    const ts = TIERS.map(x => [x.id, (tiers[x.id] || []).filter(ok)]).filter(([, l]) => l.length);
+    const off = (classic[pc[t]] || {}).tiers, inOff = new Set(off ? Object.values(off).flat().map(norm) : []);
+    const ts = TIERS.map(x => [x.id, [...((off && off[x.id]) || []), ...(tiers[x.id] || []).filter(a => ok(a) && !inOff.has(norm(a)))]]).filter(([, l]) => l.length);
+    if (off) { enriched++; const inT = new Set(ts.flatMap(([, l]) => l).map(norm)); more = more.filter(a => !inT.has(norm(a))); }
     more = more.filter(ok);
-    return { t, ...(ts.length ? { tiers: Object.fromEntries(ts) } : {}), ...(more.length ? { more } : {}), ...(wrong.size ? { wrong: [...wrong.values()] } : {}) };
+    return { t, ...(off ? { src: 'classic' } : {}), ...(ts.length ? { tiers: Object.fromEntries(ts) } : {}), ...(more.length ? { more } : {}), ...(wrong.size ? { wrong: [...wrong.values()] } : {}) };
   }).filter(p => p.tiers || p.more || p.wrong);
   fs.writeFileSync(path.join(__dirname, 'data', 'party.json'), JSON.stringify(out));
   const count = f => out.reduce((n, p) => n + f(p), 0);
-  console.log(`data/party.json: ${out.length} prompts, ${count(p => Object.values(p.tiers || {}).flat().length)} tiered answers, ${count(p => (p.more || []).length)} more, ${count(p => (p.wrong || []).length)} wrong (from sheet.json and ${files.length} generated files).`);
+  console.log(`data/party.json: ${out.length} prompts, ${count(p => Object.values(p.tiers || {}).flat().length)} tiered answers, ${count(p => (p.more || []).length)} more, ${count(p => (p.wrong || []).length)} wrong (from sheet.json and ${files.length} generated files), ${enriched} with a classic answer sheet.`);
 }
 
 (process.argv.includes('--fetch') ? fetchSheet() : Promise.resolve()).then(build);

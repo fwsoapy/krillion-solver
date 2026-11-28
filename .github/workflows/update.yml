@@ -11,6 +11,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +25,8 @@ jobs:
       - run: node update.js
       - run: node party.js --fetch
       - run: node test.js
+      # Classic-mode sheets from playdaily.org (Krillion's permission, max 1,200 requests/hour): 40 min is ~800 requests.
+      - run: node classic.js --minutes 40
       - name: Commit new data
         run: |
           git config user.name "github-actions[bot]"

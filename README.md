@@ -34,7 +34,9 @@ To install it:
 
 After a rebuild, click the reload arrow on the extension's card. New daily dives load by themselves, so you only rebuild to pick up new site code.
 
-If `.cache/p0rt1k/krillion.sql` is present, `node build.js` adds its extra prompts to your local extension. They aren't published because that dump has no license.
+Classic-mode answer sheets (`data/classic.json`) come from playdaily.org's API, used with Krillion's permission (at most 1,200 requests an hour). The scheduled update refreshes them; to run it by hand: `node classic.js --minutes N`. `node build.js` adds them to the extension.
+
+If `.cache/p0rt1k/krillion.sql` is present, `node build.js` also adds that dump's prompts that `classic.json` lacks to your local extension. They aren't published because that dump has no license.
 
 ## Where the answers come from
 
@@ -51,6 +53,8 @@ Each tier lists the most common answers first, 20 at a time. Where The Word Find
 The extension also bundles a word list made from the same FrequencyWords list (CC BY-SA 4.0), kept in `data/words.txt`. It answers party prompts like "Name an English word containing “bio”" that have no answer list.
 
 Party answers (`data/party.json`) come from the opt-in collector sheet plus generated answer lists in `collector/generated/`. They refresh on their own every few hours: the update job runs `node party.js --fetch`, which saves the collector's answers to `collector/sheet.json` and rebuilds `data/party.json`. The extension loads the newest list from the website and falls back to its built-in copy. By hand: put a sheet export in `collector/sheet.json` (`{ "prompt": ["answer/T"] }`, T = K, D, R, S, T or P from One in a Krillion down to Plankton), then run `node party.js` and `node build.js`.
+
+Party prompts that match a classic prompt get its official answer sheet (`collector/party-classic.json`, checked by hand).
 
 The last 29 days match The Word Finder's official counts to within a handful of answers. 17 small prompts, like "Name a country that borders Brazil", have no gem in any source. The game seems to skip the gem on short closed lists, and the solver says so.
 
