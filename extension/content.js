@@ -36,7 +36,7 @@ let INDEX = null, promptText = '', entry = null, sheet = null, ver = 0;
 let closed = false, collapsed = false, opened = false, busy = false, archived = false; // archived: this prompt matched an archive prompt
 let used = new Map();                                    // norm(answer) -> answer as said
 let mine = { k: '', t: 0 };                              // your last answer sent in party: auto answer skips it a few seconds, until its bubble shows
-let longTry = null;                                      // { p, a, k, sk, s, down }: a long answer a (k = norm) tried as its first 2 words s (sk)
+let longTry = null;                                      // { p, a, k, sk, s, down }: a long answer a (k = norm) tried as its short form s (sk)
 let stale = new WeakMap();                               // bubble -> its text when the prompt changed (left over, not about this prompt)
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
 let rejected = {}, bad = {};                             // promptKey -> { norm(answer): 1 } turned down / this prompt's
@@ -654,18 +654,37 @@ function chooseAnswer() {
   let r = Math.random() * pools.reduce((s, x) => s + x.w, 0);
   return (pools.find(x => (r -= x.w) < 0) || pools[pools.length - 1]).p[0];
 }
-// The next answer: a long answer's whole form once its 2-word try was turned down, else a new one.
+// The next answer: a long answer's whole form once its short try was turned down, else a new one.
 const nextAnswer = () => (longTry && longTry.p === promptText && longTry.down && free(longTry.k) ? longTry.a : null) || chooseAnswer() || guessAnswer();
 // Typed text is plain lowercase English letters: the game autocorrects close answers, and fancy characters can break typing.
 const ASCII = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-', 'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l', 'đ': 'd' };
 const plain = s => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[‘’“”–—ßæœøłđ]/g, c => ASCII[c]).replace(/[^\x00-\x7f]/g, '')
   .replace(/&/g, ' and ').replace(/[-:;,./\\()"!?]/g, ' ').replace(/\s+/g, ' ').trim(); // punctuation but ' typed as spaces
-// What to type for answer a. In party a long one (3+ words, over 18 characters) goes as its first 2 words first
-// (longTry); once those are turned down (reject), the whole answer.
+// A long answer's short form: its shortest word prefix that ends on a key word, has 2+ key words, saves 35%+ of the
+// letters and fits no other answer on this prompt's lists (same first words, or all its key words in order). '' if none.
+const PARTICLE = new Set(('the a an of to and or in on at for with by from out up off over into my your his her its our their is are be ' +
+  'no not do does did done have has had was were it this that these those i you we they me him them as if so but than then just very also ' +
+  'can will would should could may might must shall each every all any some such only own same too').split(' '));
+const inOrder = (need, w) => { let i = 0; for (const x of w) if (x === need[i]) i++; return i === need.length; };
+function shortForm(a, others) {
+  const t = plain(a), w = t.split(' '), k = norm(a);
+  const rest = others.filter(o => norm(o) !== k).map(o => plain(o).split(' '));
+  for (let n = 2; n < w.length; n++) {
+    const pre = w.slice(0, n), key = pre.filter(x => !PARTICLE.has(x)), s = pre.join(' ');
+    if (s.length > t.length * 0.65) break;
+    if (PARTICLE.has(w[n - 1]) || key.length < 2) continue;
+    if (!rest.some(o => pre.every((x, i) => o[i] === x) || inOrder(key, o))) return s;
+  }
+  return '';
+}
+const promptLists = () => [...(sheet ? Object.values(sheet.tiers).flat() : []), ...more,
+  ...(guess && guess.p === promptText ? guess.lists.flatMap(flat) : [])];
+// What to type for answer a. In party a long one (3+ words, over 18 characters) goes as its short form first
+// (longTry); once that's turned down (reject), the whole answer. No short form: the whole answer.
 function typeText(a) {
   const t = plain(a), w = t.split(/\s+/), k = norm(a);
-  const s = w.length >= 3 && t.length > 18 ? (w[0] + ' ' + w[1].replace(/[^a-z0-9']+$/, '')).trim() : '';
+  const s = w.length >= 3 && t.length > 18 && isParty() ? shortForm(a, promptLists()) : '';
   if (!norm(s) || !isParty() || gone(norm(s))) return t;
   if (longTry && longTry.p === promptText && longTry.k === k) return longTry.down ? t : longTry.s;
   longTry = { p: promptText, a, k, sk: norm(s), s, down: false };
