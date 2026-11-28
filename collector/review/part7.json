@@ -1,0 +1,432 @@
+{
+ "Name an English word ending in “-ful”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a biome (a major type of natural habitat)": {
+  "remove": [
+   "rainforest",
+   "deciduous forest",
+   "polar",
+   "ice sheet",
+   "montane"
+  ],
+  "add": []
+ },
+ "Name a type of sushi or sushi roll": {
+  "remove": [],
+  "add": []
+ },
+ "Name a compound word ending in “light”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a character from Teenage Mutant Ninja Turtles": {
+  "remove": [
+   "leo",
+   "mikey",
+   "donnie",
+   "raph",
+   "april",
+   "oroku saki",
+   "hamato yoshi",
+   "kraang"
+  ],
+  "add": []
+ },
+ "Name an English word starting with “wh”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a grammar term": {
+  "remove": [],
+  "add": []
+ },
+ "Name a sport played in or on water": {
+  "remove": [
+   "stand-up paddleboarding",
+   "white-water rafting",
+   "synchronized swimming",
+   "snorkeling",
+   "parasailing",
+   "water aerobics",
+   "yachting",
+   "fishing"
+  ],
+  "add": []
+ },
+ "Name an animal whose name starts with W": {
+  "remove": [],
+  "add": []
+ },
+ "Name a shade of orange": {
+  "remove": [
+   "melon"
+  ],
+  "add": []
+ },
+ "Name something people keep in a wallet": {
+  "remove": [
+   "money",
+   "bills",
+   "health insurance card",
+   "bank card",
+   "emergency contact card"
+  ],
+  "add": []
+ },
+ "Name a job a working dog can have": {
+  "remove": [
+   "emotional support dog",
+   "watchdog"
+  ],
+  "add": []
+ },
+ "Name an energy drink brand": {
+  "remove": [
+   "rockstar",
+   "burn"
+  ],
+  "add": []
+ },
+ "Name a country where Islam is the majority religion": {
+  "remove": [],
+  "add": []
+ },
+ "Name a movie starring Jack Black": {
+  "remove": [],
+  "add": []
+ },
+ "Name a term used in theater or on stage": {
+  "remove": [],
+  "add": []
+ },
+ "Name something in a sewing kit": {
+  "remove": [
+   "snaps"
+  ],
+  "add": []
+ },
+ "Name an English word containing “x”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a part of a book": {
+  "remove": [
+   "about the author",
+   "endpapers"
+  ],
+  "add": []
+ },
+ "Name a gymnastics skill or move": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “time”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a Dragon Ball character": {
+  "remove": [],
+  "add": []
+ },
+ "Name a part of the human ear": {
+  "remove": [
+   "auricle",
+   "hammer",
+   "anvil",
+   "stirrup",
+   "tympanic membrane",
+   "vestibulocochlear nerve",
+   "lobule",
+   "external auditory canal"
+  ],
+  "add": []
+ },
+ "Name a term used in photography": {
+  "remove": [],
+  "add": []
+ },
+ "Name a character from Frozen": {
+  "remove": [
+   "pabbie"
+  ],
+  "add": []
+ },
+ "Name a filler word people say while thinking (like “um”)": {
+  "remove": [
+   "umm",
+   "uhm",
+   "mm",
+   "ok"
+  ],
+  "add": []
+ },
+ "Name a role in a wedding": {
+  "remove": [
+   "master of ceremonies",
+   "wedding coordinator",
+   "cake baker"
+  ],
+  "add": []
+ },
+ "Name a character from The Legend of Zelda": {
+  "remove": [],
+  "add": []
+ },
+ "Name a Pop-Tart flavor, past or present": {
+  "remove": [
+   "frosted strawberry",
+   "frosted brown sugar cinnamon",
+   "frosted cherry",
+   "frosted blueberry",
+   "frosted chocolate fudge",
+   "frosted s'mores",
+   "frosted wild berry",
+   "frosted raspberry",
+   "blue raspberry",
+   "unfrosted strawberry",
+   "unfrosted blueberry",
+   "unfrosted brown sugar cinnamon",
+   "frosted cookies & creme"
+  ],
+  "add": []
+ },
+ "Name an English word containing “sub”": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “mal”": {
+  "remove": [
+   "females",
+   "males",
+   "animals",
+   "smaller",
+   "smallest"
+  ],
+  "add": []
+ },
+ "Name a city in England": {
+  "remove": [],
+  "add": []
+ },
+ "Name a phone setting you can switch on or off": {
+  "remove": [
+   "hotspot",
+   "cellular data",
+   "night light"
+  ],
+  "add": []
+ },
+ "Name a writing instrument": {
+  "remove": [
+   "paintbrush",
+   "quill pen",
+   "china marker",
+   "whiteboard marker",
+   "sharpie",
+   "biro",
+   "felt pen",
+   "ink brush"
+  ],
+  "add": []
+ },
+ "Name a US state with an ocean coastline": {
+  "remove": [],
+  "add": []
+ },
+ "Name a beer brand": {
+  "remove": [],
+  "add": []
+ },
+ "Name a term used in tennis": {
+  "remove": [],
+  "add": []
+ },
+ "Name a mob (creature) in Minecraft": {
+  "remove": [],
+  "add": []
+ },
+ "Name an egg dish": {
+  "remove": [
+   "spanish omelette",
+   "egg in a basket",
+   "tortilla de patatas",
+   "omelet",
+   "baked eggs"
+  ],
+  "add": []
+ },
+ "Name a sport played with a ball": {
+  "remove": [],
+  "add": []
+ },
+ "Name a Star Wars movie": {
+  "remove": [
+   "star wars",
+   "the empire strikes back",
+   "return of the jedi",
+   "a new hope",
+   "the phantom menace",
+   "attack of the clones",
+   "revenge of the sith",
+   "the force awakens",
+   "the last jedi",
+   "the rise of skywalker",
+   "rogue one",
+   "solo",
+   "caravan of courage: an ewok adventure",
+   "ewoks: the battle for endor"
+  ],
+  "add": []
+ },
+ "Name a way to say yes": {
+  "remove": [
+   "ok",
+   "alright",
+   "roger that",
+   "yass",
+   "aye aye",
+   "yessir",
+   "yah"
+  ],
+  "add": []
+ },
+ "Name a person you'd see in a courtroom": {
+  "remove": [
+   "clerk",
+   "stenographer",
+   "accused",
+   "journalist",
+   "defense lawyer",
+   "prosecuting attorney",
+   "translator",
+   "guard"
+  ],
+  "add": []
+ },
+ "Name a movie starring Tom Cruise": {
+  "remove": [
+   "mission: impossible – dead reckoning part one"
+  ],
+  "add": []
+ },
+ "Name a character from Willy Wonka and the Chocolate Factory": {
+  "remove": [
+   "arthur slugworth",
+   "mike teevee",
+   "oompa loompas"
+  ],
+  "add": [
+   "bill",
+   "mr. teevee",
+   "the tinker"
+  ]
+ },
+ "Name a country with more than one time zone": {
+  "remove": [],
+  "add": []
+ },
+ "Name a type of jewelry": {
+  "remove": [
+   "gold chain",
+   "ankle bracelet"
+  ],
+  "add": []
+ },
+ "Name a farm machine or vehicle": {
+  "remove": [
+   "plough",
+   "hay baler",
+   "disc harrow",
+   "rotavator",
+   "rototiller",
+   "crop sprayer",
+   "sprayer",
+   "combine",
+   "windrower",
+   "skid steer",
+   "quad bike",
+   "atv",
+   "hay wagon",
+   "rake",
+   "round baler",
+   "square baler",
+   "utv"
+  ],
+  "add": []
+ },
+ "Name a country larger than one million square kilometres": {
+  "remove": [
+   "democratic republic of the congo"
+  ],
+  "add": []
+ },
+ "Name a US coin": {
+  "remove": [
+   "cent"
+  ],
+  "add": []
+ },
+ "Name a term used in baseball": {
+  "remove": [],
+  "add": []
+ },
+ "Name something associated with a storybook witch": {
+  "remove": [
+   "broom",
+   "newt",
+   "wand",
+   "spellbook",
+   "crooked nose",
+   "long nose",
+   "cat"
+  ],
+  "add": []
+ },
+ "Name an English word containing “micro”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a term used in karate or other martial arts": {
+  "remove": [],
+  "add": []
+ },
+ "Name another word for the toilet or bathroom": {
+  "remove": [
+   "toilet",
+   "bathroom",
+   "wc",
+   "lav",
+   "ladies",
+   "public toilet",
+   "toilette",
+   "portaloo",
+   "porcelain throne"
+  ],
+  "add": []
+ },
+ "Name an English word starting with “spr”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a character from Stranger Things": {
+  "remove": [
+   "robin buckley",
+   "henry creel"
+  ],
+  "add": []
+ },
+ "Name a food or drink made from corn": {
+  "remove": [
+   "corn tortilla",
+   "sadza",
+   "nshima"
+  ],
+  "add": []
+ },
+ "Name a witch or wizard from a movie": {
+  "remove": [],
+  "add": []
+ }
+}

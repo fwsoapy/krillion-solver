@@ -1,0 +1,507 @@
+{
+ "Name a sovereign country that is a member of the G20": {
+  "remove": [],
+  "add": []
+ },
+ "Name a variety of onion or onion-family vegetable": {
+  "remove": [
+   "green onion",
+   "spring onion",
+   "vidalia onion",
+   "cipollini onion",
+   "walla walla onion",
+   "ramsons",
+   "bunching onion"
+  ],
+  "add": []
+ },
+ "Name a type of taco": {
+  "remove": [
+   "hard taco",
+   "al pastor taco",
+   "carne asada taco",
+   "carnitas taco",
+   "birria taco",
+   "lengua taco",
+   "crunchy taco",
+   "crispy taco",
+   "beef taco",
+   "steak taco",
+   "taquito",
+   "quesabirria",
+   "tacos dorados"
+  ],
+  "add": []
+ },
+ "Name a pronoun (like “they”)": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word ending in a double letter": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country with land in the Southern Hemisphere": {
+  "remove": [
+   "east timor"
+  ],
+  "add": []
+ },
+ "Name an item people buy for a new baby": {
+  "remove": [
+   "sippy cup",
+   "mobile",
+   "baby bathtub"
+  ],
+  "add": []
+ },
+ "Name a room in a house": {
+  "remove": [
+   "walk-in closet",
+   "spare room",
+   "home office"
+  ],
+  "add": []
+ },
+ "Name one of the emotions from Inside Out or Inside Out 2": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “zoo”": {
+  "remove": [
+   "zoos",
+   "zooms",
+   "zoomed",
+   "zooming",
+   "zookeepers",
+   "zoologists",
+   "bazookas",
+   "kazoos",
+   "zoonoses"
+  ],
+  "add": []
+ },
+ "Name the verb for a sound an animal makes": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country with at least one active volcano": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word starting with “wr”": {
+  "remove": [
+   "writings",
+   "wrapped",
+   "wrecked",
+   "wrinkled",
+   "wrenched",
+   "wrestled"
+  ],
+  "add": []
+ },
+ "Name a type of salt you could season food with": {
+  "remove": [
+   "kala namak",
+   "himalayan salt",
+   "pink salt",
+   "hawaiian salt",
+   "grey salt",
+   "smoked sea salt"
+  ],
+  "add": []
+ },
+ "Name a country with at least five land neighbors": {
+  "remove": [
+   "democratic republic of the congo"
+  ],
+  "add": []
+ },
+ "Name something kids do in the snow": {
+  "remove": [
+   "snowman",
+   "make snow angels",
+   "snow fort",
+   "tobogganing",
+   "throw snowballs",
+   "shovel snow",
+   "make snowballs",
+   "go sledding",
+   "sled",
+   "cross-country skiing"
+  ],
+  "add": [
+   "make snow ice cream",
+   "snowmobiling",
+   "dig snow tunnels"
+  ]
+ },
+ "Name a country larger than Indonesia": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country with exactly three colors on its flag": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “post”": {
+  "remove": [
+   "imposter",
+   "posts",
+   "posted",
+   "posting",
+   "posters",
+   "postcards",
+   "postmen",
+   "postmarked",
+   "composting"
+  ],
+  "add": []
+ },
+ "Name a country whose flag contains green": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word with three or more S’s": {
+  "remove": [
+   "sessions",
+   "businesses",
+   "stressed",
+   "obsessed"
+  ],
+  "add": []
+ },
+ "Name a common sports injury": {
+  "remove": [
+   "torn acl",
+   "hamstring strain",
+   "pulled groin",
+   "ankle sprain",
+   "broken rib",
+   "fracture",
+   "sprain",
+   "strain",
+   "patellar tendonitis"
+  ],
+  "add": []
+ },
+ "Name an English word containing “eigh”": {
+  "remove": [
+   "neighbour",
+   "weighed",
+   "weighing",
+   "heights",
+   "neighbourhood",
+   "neighbors",
+   "neighing",
+   "weights",
+   "sleighs",
+   "freights",
+   "neighed",
+   "heightened",
+   "eighties"
+  ],
+  "add": []
+ },
+ "Name an English word containing “contra”": {
+  "remove": [
+   "contrasting",
+   "contracted",
+   "contracting",
+   "contracts",
+   "contrasts",
+   "contradicted",
+   "contradicting",
+   "contradicts",
+   "contradictions",
+   "contractors",
+   "contraptions",
+   "contraindicated"
+  ],
+  "add": []
+ },
+ "Name a school event": {
+  "remove": [
+   "spring concert",
+   "school trip",
+   "school fair",
+   "parents evening"
+  ],
+  "add": []
+ },
+ "Name a fishing term": {
+  "remove": [
+   "trolling",
+   "jigging",
+   "fishing rod",
+   "fishing line"
+  ],
+  "add": []
+ },
+ "Name a tool used to create written text by hand or by typing": {
+  "remove": [
+   "highlighter",
+   "sharpie",
+   "quill pen",
+   "permanent marker",
+   "dry erase marker",
+   "phone"
+  ],
+  "add": []
+ },
+ "Name a basketball move or shot": {
+  "remove": [
+   "slam dunk",
+   "runner",
+   "teardrop",
+   "jumper"
+  ],
+  "add": []
+ },
+ "Name a percussion instrument": {
+  "remove": [
+   "drum",
+   "cymbal",
+   "congas",
+   "tubular bells",
+   "kettledrum",
+   "drum kit",
+   "crash cymbal",
+   "ride cymbal",
+   "bongo",
+   "tom"
+  ],
+  "add": []
+ },
+ "Name an English word ending in “-ling”": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “age”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a subgenre of rock music": {
+  "remove": [
+   "prog rock"
+  ],
+  "add": []
+ },
+ "Name a device or object used to tell time": {
+  "remove": [
+   "wristwatch",
+   "clepsydra",
+   "cell phone",
+   "smartphone",
+   "egg timer",
+   "kitchen timer",
+   "sand timer",
+   "digital watch",
+   "marine chronometer"
+  ],
+  "add": []
+ },
+ "Name a city in Spain": {
+  "remove": [],
+  "add": []
+ },
+ "Name a word for a way of looking at something": {
+  "remove": [
+   "gawp",
+   "notice",
+   "spot",
+   "skim",
+   "viewpoint",
+   "point of view",
+   "outlook",
+   "standpoint",
+   "angle"
+  ],
+  "add": []
+ },
+ "Name a type of vinegar": {
+  "remove": [
+   "rice wine vinegar",
+   "distilled vinegar",
+   "cider vinegar",
+   "sugarcane vinegar",
+   "spirit vinegar",
+   "chinkiang vinegar",
+   "kombucha vinegar",
+   "cleaning vinegar"
+  ],
+  "add": []
+ },
+ "Name a country beginning with A or E": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word starting with “thr”": {
+  "remove": [
+   "thrilling",
+   "thriving",
+   "threatening",
+   "thrived",
+   "throbbing",
+   "thronged",
+   "threshing",
+   "thrilled"
+  ],
+  "add": []
+ },
+ "Name a European country that does not use the euro": {
+  "remove": [
+   "armenia",
+   "czech republic",
+   "georgia",
+   "azerbaijan",
+   "kazakhstan"
+  ],
+  "add": []
+ },
+ "Name a movie starring Zendaya": {
+  "remove": [
+   "dune: part three"
+  ],
+  "add": []
+ },
+ "Name a word that means delicious": {
+  "remove": [
+   "savoury",
+   "appetising",
+   "mouth-watering",
+   "palatable"
+  ],
+  "add": []
+ },
+ "Name a country that shares a land border with France, Germany, or Italy": {
+  "remove": [
+   "czech republic"
+  ],
+  "add": []
+ },
+ "Name a job at a school besides teacher": {
+  "remove": [
+   "custodian",
+   "nurse",
+   "counselor",
+   "secretary",
+   "cafeteria worker",
+   "assistant principal",
+   "teaching assistant",
+   "aide",
+   "paraprofessional",
+   "superintendent",
+   "headmaster",
+   "headteacher",
+   "band director",
+   "tutor",
+   "chef"
+  ],
+  "add": []
+ },
+ "Name an English word ending in “-ship”": {
+  "remove": [],
+  "add": []
+ },
+ "Name an item or block with an inventory or crafting-table recipe in vanilla Minecraft: Java Edition 26.2": {
+  "remove": [
+   "block of iron"
+  ],
+  "add": []
+ },
+ "Name an English word containing “q”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a McDonald's menu item (past or present)": {
+  "remove": [
+   "double quarter pounder with cheese",
+   "mcmuffin",
+   "chocolate shake"
+  ],
+  "add": []
+ },
+ "Name a character from Winnie the Pooh": {
+  "remove": [
+   "the backson"
+  ],
+  "add": []
+ },
+ "Name a word that means smart or intelligent": {
+  "remove": [
+   "quick-witted",
+   "informed",
+   "enlightened",
+   "academic",
+   "highbrow",
+   "bookish",
+   "literate"
+  ],
+  "add": []
+ },
+ "Name an NHL team": {
+  "remove": [
+   "phoenix coyotes",
+   "utah hockey club",
+   "mighty ducks of anaheim",
+   "oakland seals"
+  ],
+  "add": []
+ },
+ "Name a country that borders the Pacific Ocean": {
+  "remove": [],
+  "add": []
+ },
+ "Name a body part spelled with three letters": {
+  "remove": [],
+  "add": []
+ },
+ "Name a city in France": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “ough”": {
+  "remove": [
+   "coughing"
+  ],
+  "add": []
+ },
+ "Name something a barber or hairstylist uses": {
+  "remove": [
+   "brush",
+   "hair dryer",
+   "shears",
+   "hair color",
+   "razor blades",
+   "hot towel",
+   "sink",
+   "hair straightener",
+   "rollers",
+   "curlers",
+   "hair clips",
+   "round brush"
+  ],
+  "add": []
+ },
+ "Name a country beginning with a letter from T through Z": {
+  "remove": [],
+  "add": []
+ },
+ "Name a flavor of fruit juice": {
+  "remove": [
+   "clementine",
+   "blood orange",
+   "sour cherry"
+  ],
+  "add": []
+ },
+ "Name a country where an Arabic-derived script has official use": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word ending in “-ism”": {
+  "remove": [],
+  "add": []
+ }
+}

@@ -58,18 +58,38 @@ function build() {
   // sheet's tiers go first, then collected answers it lacks; more keeps only answers in no tier.
   const pcFile = path.join(dir, 'party-classic.json'), clFile = path.join(__dirname, 'data', 'classic.json');
   const pc = fs.existsSync(pcFile) ? read(pcFile) : {}, classic = fs.existsSync(clFile) ? read(clFile).prompts || {} : {};
-  let enriched = 0;
+  // collector/review/*.json: { party prompt: { remove: [answers], add: [answers] } }, checked by hand. Removed answers leave
+  // more (never the tiers), whatever a generated file says; added ones join more if the entry lacks them.
+  const rev = path.join(dir, 'review'), reviews = new Map(); // promptKey -> { remove: norm(answer) set, add: [answers] }
+  for (const f of fs.existsSync(rev) ? fs.readdirSync(rev).filter(f => f.endsWith('.json')).sort() : []) {
+    for (const [t, r] of Object.entries(read(path.join(rev, f)))) {
+      const k = promptKey(t);
+      if (!reviews.has(k)) reviews.set(k, { remove: new Set(), add: [] });
+      const v = reviews.get(k);
+      for (const a of Array.isArray(r && r.remove) ? r.remove : []) if (norm(a)) v.remove.add(norm(a));
+      for (const a of Array.isArray(r && r.add) ? r.add : []) if (norm(a)) v.add.push(String(a).trim());
+    }
+  }
+  let enriched = 0, removed = 0, added = 0;
   const out = [...byKey.values()].map(({ t, tiers, more, wrong }) => {
     const ok = a => !wrong.has(norm(a)); // W answers leave the tiers and more
     const off = (classic[pc[t]] || {}).tiers, inOff = new Set(off ? Object.values(off).flat().map(norm) : []);
     const ts = TIERS.map(x => [x.id, [...((off && off[x.id]) || []), ...(tiers[x.id] || []).filter(a => ok(a) && !inOff.has(norm(a)))]]).filter(([, l]) => l.length);
     if (off) { enriched++; const inT = new Set(ts.flatMap(([, l]) => l).map(norm)); more = more.filter(a => !inT.has(norm(a))); }
     more = more.filter(ok);
+    const r = reviews.get(promptKey(t));
+    if (r) {
+      const n = more.length;
+      more = more.filter(a => !r.remove.has(norm(a))); removed += n - more.length;
+      const has = new Set([...ts.flatMap(([, l]) => l), ...more].map(norm));
+      for (const a of r.add) { const k = norm(a); if (!has.has(k) && !r.remove.has(k) && ok(a)) { has.add(k); more.push(a); added++; } }
+    }
     return { t, ...(off ? { src: 'classic' } : {}), ...(ts.length ? { tiers: Object.fromEntries(ts) } : {}), ...(more.length ? { more } : {}), ...(wrong.size ? { wrong: [...wrong.values()] } : {}) };
   }).filter(p => p.tiers || p.more || p.wrong);
   fs.writeFileSync(path.join(__dirname, 'data', 'party.json'), JSON.stringify(out));
   const count = f => out.reduce((n, p) => n + f(p), 0);
   console.log(`data/party.json: ${out.length} prompts, ${count(p => Object.values(p.tiers || {}).flat().length)} tiered answers, ${count(p => (p.more || []).length)} more, ${count(p => (p.wrong || []).length)} wrong (from sheet.json and ${files.length} generated files), ${enriched} with a classic answer sheet.`);
+  if (reviews.size) console.log(`collector/review: ${removed} answers removed, ${added} added.`);
 }
 
 (process.argv.includes('--fetch') ? fetchSheet() : Promise.resolve()).then(build);

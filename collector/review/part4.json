@@ -1,0 +1,290 @@
+{
+  "Name a starter Pokémon": {
+    "remove": [],
+    "add": []
+  },
+  "Name a character from AMC's original The Walking Dead series": {
+    "remove": [],
+    "add": []
+  },
+  "Name a term of endearment for a loved one": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Kendrick Lamar song": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country or territory that won gold at the Paris 2024 Olympics": {
+    "remove": [],
+    "add": []
+  },
+  "Name a volleyball term (a move, position, or call)": {
+    "remove": [
+      "antenna"
+    ],
+    "add": []
+  },
+  "Name a natural disaster (types, not specific events)": {
+    "remove": [
+      "heat wave"
+    ],
+    "add": []
+  },
+  "Name a Despicable Me character": {
+    "remove": [],
+    "add": []
+  },
+  "Name a hoofed mammal": {
+    "remove": [],
+    "add": []
+  },
+  "Name a deli or cured meat": {
+    "remove": [
+      "coppa"
+    ],
+    "add": []
+  },
+  "Name something people put in their coffee": {
+    "remove": [],
+    "add": []
+  },
+  "Name a NATO member country": {
+    "remove": [
+      "czechia"
+    ],
+    "add": []
+  },
+  "Name a Nintendo home, handheld, hybrid, or dedicated video game console (including marketed revisions)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a houseplant": {
+    "remove": [],
+    "add": []
+  },
+  "Name a part of the human foot": {
+    "remove": [],
+    "add": []
+  },
+  "Name a platform primarily used for direct or group messaging, not a social network that merely includes DMs": {
+    "remove": [],
+    "add": []
+  },
+  "Name a term used in bowling": {
+    "remove": [],
+    "add": []
+  },
+  "Name an urban area with more than five million people": {
+    "remove": [],
+    "add": []
+  },
+  "Name an African country with more than 20 million people": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country in the Schengen Area": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word ending in “-oe”": {
+    "remove": [
+      "tic-tac-toe"
+    ],
+    "add": []
+  },
+  "Name a contraction (like “don’t”)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a landmark in London": {
+    "remove": [
+      "palace of westminster",
+      "elizabeth tower"
+    ],
+    "add": []
+  },
+  "Name a nut or seed butter": {
+    "remove": [
+      "sesame butter"
+    ],
+    "add": []
+  },
+  "Name a Lady Gaga song": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country with a high-speed rail network": {
+    "remove": [],
+    "add": []
+  },
+  "Name a piece of camping gear": {
+    "remove": [],
+    "add": []
+  },
+  "Name a member country of the Arab League": {
+    "remove": [],
+    "add": []
+  },
+  "Name a part of a bicycle": {
+    "remove": [
+      "seat post"
+    ],
+    "add": []
+  },
+  "Name a Grand Prix on the 2026 Formula 1 calendar": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word ending in “-ish”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a term or punch used in boxing": {
+    "remove": [
+      "technical knockout"
+    ],
+    "add": []
+  },
+  "Name a game you might play at a bar or pub": {
+    "remove": [
+      "giant jenga"
+    ],
+    "add": []
+  },
+  "Name a character from Family Guy": {
+    "remove": [
+      "adam west",
+      "ida quagmire"
+    ],
+    "add": []
+  },
+  "Name a mountainous country (one with land above 5,000 metres)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a currency currently used by a sovereign country": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Spider-Man character": {
+    "remove": [
+      "peter parker",
+      "eddie brock",
+      "norman osborn"
+    ],
+    "add": []
+  },
+  "Name an English word ending in “-fold”": {
+    "remove": [
+      "millionfold",
+      "manyfold",
+      "centrefold"
+    ],
+    "add": []
+  },
+  "Name an English word ending in “-ware”": {
+    "remove": [
+      "copperware",
+      "brassware"
+    ],
+    "add": []
+  },
+  "Name a term of endearment": {
+    "remove": [
+      "my love"
+    ],
+    "add": []
+  },
+  "Name a character from The Big Bang Theory": {
+    "remove": [],
+    "add": []
+  },
+  "Name a movie set partly in outer space or on another planet": {
+    "remove": [],
+    "add": []
+  },
+  "Name a snack people buy at the movie theater": {
+    "remove": [],
+    "add": []
+  },
+  "Name a character from Brooklyn Nine-Nine": {
+    "remove": [
+      "nikolaj boyle"
+    ],
+    "add": []
+  },
+  "Name an English word containing “port”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a sneaker brand": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word containing “zz”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a button on a TV remote": {
+    "remove": [
+      "sleep",
+      "disney+",
+      "numbers"
+    ],
+    "add": []
+  },
+  "Name a position in baseball": {
+    "remove": [],
+    "add": []
+  },
+  "Name a sporting-goods brand": {
+    "remove": [],
+    "add": []
+  },
+  "Name a movie starring Sylvester Stallone": {
+    "remove": [
+      "guardians of the galaxy vol. 2",
+      "antz",
+      "the suicide squad"
+    ],
+    "add": []
+  },
+  "Name a live-action Disney remake of an animated film": {
+    "remove": [
+      "rudyard kipling's the jungle book"
+    ],
+    "add": []
+  },
+  "Name a character from the Sonic the Hedgehog games": {
+    "remove": [
+      "e-123 omega",
+      "maria robotnik"
+    ],
+    "add": []
+  },
+  "Name a city that has hosted the Summer Olympics": {
+    "remove": [],
+    "add": []
+  },
+  "Name a chemical element": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word containing “atch”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a character from Modern Family": {
+    "remove": [],
+    "add": []
+  },
+  "Name a compound word ending in “line”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country with territory on more than one continent": {
+    "remove": [],
+    "add": []
+  }
+}

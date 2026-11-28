@@ -1,0 +1,452 @@
+{
+  "Name a sports league, tour, circuit or promotion": {
+    "remove": [],
+    "add": []
+  },
+  "Name a movie starring Samuel L. Jackson": {
+    "remove": [],
+    "add": []
+  },
+  "Name a classic first date activity": {
+    "remove": [
+      "axe throwing",
+      "go-karting",
+      "rock climbing",
+      "pottery class",
+      "cooking class",
+      "drive-in movie",
+      "bar",
+      "botanical garden",
+      "board games"
+    ],
+    "add": []
+  },
+  "Name something on a playground (play equipment and ground surfaces)": {
+    "remove": [
+      "baby swing",
+      "swing set",
+      "teeter-totter",
+      "climbing frame",
+      "rubber mulch",
+      "blacktop",
+      "bench"
+    ],
+    "add": []
+  },
+  "Name a DC superhero movie": {
+    "remove": [
+      "jonah hex",
+      "constantine"
+    ],
+    "add": []
+  },
+  "Name an animal whose name starts with G": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country or former team with an Olympic volleyball medal (indoor or beach, through Paris 2024)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country containing an urban area with more than 10 million people": {
+    "remove": [
+      "iran",
+      "vietnam"
+    ],
+    "add": []
+  },
+  "Name an Asian country with a coastline": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word starting with “squ”": {
+    "remove": [
+      "squares",
+      "squashed",
+      "squeezed",
+      "squealing",
+      "squatting",
+      "squirming",
+      "squinting"
+    ],
+    "add": []
+  },
+  "Name an X-Men character": {
+    "remove": [
+      "archangel",
+      "shadowcat",
+      "phoenix"
+    ],
+    "add": []
+  },
+  "Name a cleaning supply (brands count too)": {
+    "remove": [
+      "vacuum"
+    ],
+    "add": []
+  },
+  "Name a movie starring Keanu Reeves": {
+    "remove": [],
+    "add": []
+  },
+  "Name a compound word ending in “stone”": {
+    "remove": [
+      "kerbstone"
+    ],
+    "add": []
+  },
+  "Name an English word containing “ject”": {
+    "remove": [
+      "rejected",
+      "projected",
+      "injected",
+      "subjected",
+      "trajectories",
+      "rejects",
+      "objects",
+      "projects",
+      "injecting"
+    ],
+    "add": []
+  },
+  "Name a facial expression": {
+    "remove": [
+      "shocked face",
+      "stare",
+      "deadpan",
+      "puzzled look",
+      "blush",
+      "yawn",
+      "beam"
+    ],
+    "add": []
+  },
+  "Name a language with official status somewhere in Europe": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Pokémon type": {
+    "remove": [
+      "stellar"
+    ],
+    "add": []
+  },
+  "Name a part or feature of a road": {
+    "remove": [
+      "crash barrier",
+      "kerb",
+      "junction",
+      "median strip",
+      "hard shoulder"
+    ],
+    "add": []
+  },
+  "Name a hand gesture": {
+    "remove": [
+      "devil horns",
+      "praying hands",
+      "hook 'em horns",
+      "air five"
+    ],
+    "add": []
+  },
+  "Name an athlete with a signature sneaker": {
+    "remove": [],
+    "add": []
+  },
+  "Name a distilled spirit or liqueur": {
+    "remove": [
+      "rye whiskey",
+      "malibu"
+    ],
+    "add": []
+  },
+  "Name a variety of wine": {
+    "remove": [
+      "shiraz",
+      "pinot gris",
+      "muscat",
+      "primitivo"
+    ],
+    "add": []
+  },
+  "Name an animal whose name starts with C": {
+    "remove": [],
+    "add": []
+  },
+  "Name a boxing movie": {
+    "remove": [
+      "real steel",
+      "tyson"
+    ],
+    "add": []
+  },
+  "Name an interjection or exclamation": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word containing “dge”": {
+    "remove": [
+      "edged",
+      "hedged",
+      "wedged",
+      "abridged"
+    ],
+    "add": []
+  },
+  "Name an English word containing “cycl”": {
+    "remove": [
+      "cycles",
+      "cycled",
+      "recycled",
+      "cyclopes"
+    ],
+    "add": []
+  },
+  "Name an English word containing “atter”": {
+    "remove": [
+      "flattered",
+      "shattered",
+      "scattered",
+      "mattered",
+      "chattering",
+      "splattered",
+      "pattering",
+      "clattered",
+      "patterns",
+      "tatters"
+    ],
+    "add": []
+  },
+  "Name a country with land classified as tropical rainforest climate": {
+    "remove": [
+      "liberia",
+      "ghana",
+      "gabon"
+    ],
+    "add": []
+  },
+  "Name an English word containing “itch”": {
+    "remove": [
+      "itching",
+      "stitches",
+      "switches",
+      "snitched",
+      "ditches",
+      "stitching",
+      "pitched",
+      "witches",
+      "twitching",
+      "hitched",
+      "glitches",
+      "itches",
+      "stitched",
+      "switched"
+    ],
+    "add": []
+  },
+  "Name a country in South America": {
+    "remove": [],
+    "add": []
+  },
+  "Name an animal with flippers": {
+    "remove": [
+      "killer whale"
+    ],
+    "add": []
+  },
+  "Name a Christmas decoration": {
+    "remove": [
+      "baubles",
+      "icicle lights",
+      "yule log",
+      "santa claus",
+      "advent wreath",
+      "string lights",
+      "elf"
+    ],
+    "add": []
+  },
+  "Name a word that means beautiful": {
+    "remove": [
+      "charming",
+      "graceful",
+      "aesthetic",
+      "photogenic",
+      "statuesque"
+    ],
+    "add": []
+  },
+  "Name a part of a cell": {
+    "remove": [
+      "nuclear envelope",
+      "plasma membrane",
+      "golgi body",
+      "central vacuole"
+    ],
+    "add": []
+  },
+  "Name a movie prominently featuring sharks": {
+    "remove": [],
+    "add": []
+  },
+  "Name an adverb that doesn’t end in -ly (like “soon”)": {
+    "remove": [],
+    "add": []
+  },
+  "Name an animal that lives on the African savanna": {
+    "remove": [],
+    "add": []
+  },
+  "Name a sports video game": {
+    "remove": [
+      "efootball",
+      "ea sports college football"
+    ],
+    "add": []
+  },
+  "Name a country that borders Germany": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word containing “hydro”": {
+    "remove": [
+      "hydroplaning",
+      "hydroponics"
+    ],
+    "add": []
+  },
+  "Name a European country with a coastline": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Scandinavian or Nordic country or territory": {
+    "remove": [
+      "jan mayen"
+    ],
+    "add": []
+  },
+  "Name a country that has nuclear weapons or operates a nuclear power plant": {
+    "remove": [],
+    "add": []
+  },
+  "Name a K-pop group": {
+    "remove": [
+      "nct 127",
+      "nct dream"
+    ],
+    "add": []
+  },
+  "Name an English word containing “auto”": {
+    "remove": [
+      "autographed",
+      "automated",
+      "automata",
+      "autoplay",
+      "autosave"
+    ],
+    "add": []
+  },
+  "Name an Academy Award category (current or retired)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country with territory inside the Arctic Circle": {
+    "remove": [],
+    "add": []
+  },
+  "Name an official language of at least one UN member country": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country that uses the euro": {
+    "remove": [],
+    "add": []
+  },
+  "Name a character from Peter Pan": {
+    "remove": [
+      "wendy darling",
+      "george darling",
+      "mary darling",
+      "tick-tock",
+      "the crocodile",
+      "hook",
+      "mr. smee",
+      "tinkerbell"
+    ],
+    "add": []
+  },
+  "Name an African country with a coastline": {
+    "remove": [],
+    "add": []
+  },
+  "Name a franchise that has official LEGO sets": {
+    "remove": [
+      "avengers"
+    ],
+    "add": []
+  },
+  "Name a Hogwarts professor or staff member": {
+    "remove": [
+      "albus dumbledore",
+      "severus snape",
+      "minerva mcgonagall",
+      "rubeus hagrid",
+      "remus lupin",
+      "horace slughorn",
+      "gilderoy lockhart",
+      "sybill trelawney",
+      "dolores umbridge",
+      "argus filch",
+      "quirinus quirrell",
+      "pomona sprout",
+      "filius flitwick",
+      "alastor moody",
+      "poppy pomfrey",
+      "rolanda hooch",
+      "irma pince",
+      "cuthbert binns",
+      "charity burbage",
+      "septima vector",
+      "aurora sinistra"
+    ],
+    "add": []
+  },
+  "Name a machine or piece of equipment at the gym": {
+    "remove": [
+      "spin bike",
+      "assault bike",
+      "power rack",
+      "incline bench",
+      "decline bench",
+      "seated row machine"
+    ],
+    "add": []
+  },
+  "Name a character from The Fresh Prince of Bel-Air": {
+    "remove": [
+      "will",
+      "carlton",
+      "hilary",
+      "ashley",
+      "nicky",
+      "uncle phil",
+      "aunt viv",
+      "geoffrey",
+      "trevor"
+    ],
+    "add": []
+  },
+  "Name a phase of the Moon": {
+    "remove": [
+      "last quarter",
+      "gibbous",
+      "quarter moon"
+    ],
+    "add": []
+  },
+  "Name a compound word ending in “man”": {
+    "remove": [],
+    "add": []
+  }
+}

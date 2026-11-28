@@ -1,0 +1,414 @@
+{
+  "Name a compound word ending in “way”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a stringed instrument": {
+    "remove": [],
+    "add": []
+  },
+  "Name a green animal": {
+    "remove": [
+      "tree frog",
+      "green anole"
+    ],
+    "add": []
+  },
+  "Name a food dogs shouldn't eat": {
+    "remove": [
+      "dark chocolate",
+      "cooked bones",
+      "chicken bones",
+      "raw dough",
+      "black walnuts"
+    ],
+    "add": []
+  },
+  "Name a U.S. state entirely west of the Mississippi River": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word ending in “-gram”": {
+    "remove": [
+      "dekagram"
+    ],
+    "add": []
+  },
+  "Name an object typically made of glass": {
+    "remove": [
+      "window pane",
+      "christmas ornament"
+    ],
+    "add": []
+  },
+  "Name an accent or dialect of English": {
+    "remove": [
+      "hiberno-english",
+      "aave",
+      "singapore english",
+      "cockney rhyming slang"
+    ],
+    "add": []
+  },
+  "Name a compound word starting with “water”": {
+    "remove": [
+      "watercolour"
+    ],
+    "add": []
+  },
+  "Name something you'd see at an airport": {
+    "remove": [],
+    "add": []
+  },
+  "Name an ingredient used in baking a cake": {
+    "remove": [],
+    "add": []
+  },
+  "Name a country whose English name contains J, K, or V": {
+    "remove": [
+      "côte d'ivoire",
+      "cabo verde"
+    ],
+    "add": []
+  },
+  "Name a compound word starting with “snow”": {
+    "remove": [
+      "snowplough"
+    ],
+    "add": []
+  },
+  "Name an English word containing “mono”": {
+    "remove": [
+      "monologue",
+      "monosodium"
+    ],
+    "add": []
+  },
+  "Name an English word containing “ink”": {
+    "remove": [],
+    "add": []
+  },
+  "Name an archery term": {
+    "remove": [
+      "fletch",
+      "point blank"
+    ],
+    "add": []
+  },
+  "Name a country that borders France (overseas territories count)": {
+    "remove": [],
+    "add": []
+  },
+  "Name a cooking oil": {
+    "remove": [
+      "extra virgin olive oil",
+      "beef tallow",
+      "camellia oil",
+      "light olive oil",
+      "toasted sesame oil",
+      "high oleic sunflower oil"
+    ],
+    "add": []
+  },
+  "Name a type of basketball shot": {
+    "remove": [
+      "slam dunk",
+      "teardrop",
+      "corner three",
+      "buzzer beater",
+      "fadeaway jumper"
+    ],
+    "add": []
+  },
+  "Name an Asian country with territory south of the Tropic of Cancer": {
+    "remove": [
+      "east timor"
+    ],
+    "add": []
+  },
+  "Name an English word containing “uni”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a major disease outbreak or pandemic from history": {
+    "remove": [
+      "h1n1",
+      "bubonic plague",
+      "monkeypox",
+      "1918 flu pandemic"
+    ],
+    "add": []
+  },
+  "Name a shade of yellow": {
+    "remove": [
+      "canary yellow",
+      "lemon yellow",
+      "banana yellow",
+      "yellow ochre",
+      "champagne",
+      "vanilla"
+    ],
+    "add": []
+  },
+  "Name a character from Alice in Wonderland": {
+    "remove": [
+      "hatta",
+      "haigha",
+      "pat"
+    ],
+    "add": []
+  },
+  "Name a word for a crowd or group of people": {
+    "remove": [
+      "league"
+    ],
+    "add": []
+  },
+  "Name a word that means cold": {
+    "remove": [
+      "wintery",
+      "hypothermic",
+      "frostbitten",
+      "numbing"
+    ],
+    "add": []
+  },
+  "Name an animal that can regrow a lost body part": {
+    "remove": [
+      "flatworm",
+      "sea star",
+      "tadpole"
+    ],
+    "add": []
+  },
+  "Name a character from Phineas and Ferb": {
+    "remove": [
+      "heinz doofenshmirtz",
+      "dr. doofenshmirtz",
+      "perry the platypus"
+    ],
+    "add": []
+  },
+  "Name an English word containing “cred”": {
+    "remove": [
+      "credentials"
+    ],
+    "add": []
+  },
+  "Name a sport played on a court": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word ending in “-ment”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a type of makeup product (brands don't count)": {
+    "remove": [
+      "liquid eyeliner",
+      "cream blush",
+      "eyeshadow palette",
+      "liquid lipstick",
+      "contour stick",
+      "brow pencil",
+      "shimmer"
+    ],
+    "add": []
+  },
+  "Name a compound word starting with “bed”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Spider-Man movie": {
+    "remove": [
+      "spider-man: beyond the spider-verse"
+    ],
+    "add": []
+  },
+  "Name a term used in pool or billiards": {
+    "remove": [
+      "break shot",
+      "cue stick",
+      "double kiss"
+    ],
+    "add": []
+  },
+  "Name a spa treatment": {
+    "remove": [
+      "infrared sauna",
+      "whirlpool bath"
+    ],
+    "add": []
+  },
+  "Name a type of potato chip or crisp flavor (brands don't count)": {
+    "remove": [
+      "sea salt and vinegar",
+      "buffalo wing",
+      "bacon",
+      "sour cream",
+      "salted"
+    ],
+    "add": []
+  },
+  "Name a dish served at an American Thanksgiving": {
+    "remove": [
+      "mac and cheese",
+      "dressing",
+      "giblet gravy",
+      "rolls",
+      "roast turkey",
+      "yams"
+    ],
+    "add": []
+  },
+  "Name a joint in the human body": {
+    "remove": [
+      "hip joint",
+      "knee joint",
+      "elbow joint",
+      "ankle joint",
+      "wrist joint",
+      "shoulder joint",
+      "facet joint",
+      "atlantoaxial joint",
+      "big toe joint",
+      "ball and socket joint",
+      "hinge joint",
+      "pivot joint",
+      "saddle joint"
+    ],
+    "add": []
+  },
+  "Name one of Santa's reindeer": {
+    "remove": [
+      "donder",
+      "dunder",
+      "blixem"
+    ],
+    "add": []
+  },
+  "Name a hot drink": {
+    "remove": [
+      "hot cider",
+      "glühwein",
+      "yerba mate",
+      "masala chai",
+      "chai latte"
+    ],
+    "add": []
+  },
+  "Name an English word ending in “-proof”": {
+    "remove": [
+      "idiotproof",
+      "tearproof",
+      "acidproof",
+      "sweatproof",
+      "splashproof",
+      "scratchproof"
+    ],
+    "add": []
+  },
+  "Name an English word containing “therm”": {
+    "remove": [
+      "thermals"
+    ],
+    "add": []
+  },
+  "Name a word that means happy": {
+    "remove": [
+      "contented",
+      "thankful",
+      "glowing",
+      "rejoicing"
+    ],
+    "add": []
+  },
+  "Name a compound word ending in “work”": {
+    "remove": [],
+    "add": []
+  },
+  "Name an English word containing “astro” or “aster”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a member of the Kardashian-Jenner family": {
+    "remove": [
+      "kanye west",
+      "scott disick",
+      "tristan thompson",
+      "lamar odom",
+      "kris humphries"
+    ],
+    "add": []
+  },
+  "Name a country with a land border longer than 2,000 kilometres": {
+    "remove": [],
+    "add": []
+  },
+  "Name an animal that lives in swamps or wetlands": {
+    "remove": [
+      "water moccasin"
+    ],
+    "add": []
+  },
+  "Name an English word ending in “-ward”": {
+    "remove": [],
+    "add": []
+  },
+  "Name a word for a segment of play in a sport": {
+    "remove": [
+      "innings",
+      "spell"
+    ],
+    "add": []
+  },
+  "Name an English word containing “ball”": {
+    "remove": [
+      "racquetball"
+    ],
+    "add": []
+  },
+  "Name an animal that can fly but is not a bird": {
+    "remove": [],
+    "add": []
+  },
+  "Name a Rocky or Creed movie": {
+    "remove": [],
+    "add": []
+  },
+  "Name a part of a plant": {
+    "remove": [
+      "sap"
+    ],
+    "add": []
+  },
+  "Name a Billie Eilish song": {
+    "remove": [],
+    "add": []
+  },
+  "Name a piece of protective equipment worn in sports": {
+    "remove": [
+      "neck guard",
+      "elbow guards",
+      "mouthpiece",
+      "gumshield",
+      "box",
+      "thigh guard",
+      "shin pads",
+      "groin guard",
+      "chest guard"
+    ],
+    "add": []
+  },
+  "Name an NBA MVP winner": {
+    "remove": [],
+    "add": []
+  },
+  "Name a character from South Park": {
+    "remove": [
+      "token black",
+      "mephesto"
+    ],
+    "add": []
+  }
+}

@@ -1,0 +1,347 @@
+{
+ "Name a character from Disney's Aladdin": {
+  "remove": [],
+  "add": []
+ },
+ "Name a shade of pink": {
+  "remove": [
+   "coral",
+   "raspberry",
+   "watermelon",
+   "bubblegum"
+  ],
+  "add": []
+ },
+ "Name a compound word containing 'house'": {
+  "remove": [],
+  "add": []
+ },
+ "Name a type of landform (bodies of water don't count)": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country's national animal": {
+  "remove": [],
+  "add": []
+ },
+ "Name a variety of rice": {
+  "remove": [
+   "glutinous rice",
+   "sweet rice",
+   "forbidden rice",
+   "instant rice"
+  ],
+  "add": []
+ },
+ "Name a country whose flag has horizontal stripes": {
+  "remove": [],
+  "add": []
+ },
+ "Name a way to say hello in another language": {
+  "remove": [
+   "marhaba",
+   "halo",
+   "habari"
+  ],
+  "add": []
+ },
+ "Name a country with coastline south of the Equator": {
+  "remove": [
+   "france"
+  ],
+  "add": []
+ },
+ "Name a school club or extracurricular": {
+  "remove": [
+   "basketball team",
+   "soccer team"
+  ],
+  "add": []
+ },
+ "Name a source of light": {
+  "remove": [
+   "phone screen",
+   "neon light"
+  ],
+  "add": []
+ },
+ "Name a superhero who has had their own solo movie": {
+  "remove": [],
+  "add": []
+ },
+ "Name a summer camp activity": {
+  "remove": [],
+  "add": []
+ },
+ "Name a word that means scared": {
+  "remove": [
+   "trembling"
+  ],
+  "add": []
+ },
+ "Name a shade of brown": {
+  "remove": [
+   "walnut",
+   "hickory",
+   "pecan"
+  ],
+  "add": []
+ },
+ "Name something people are allergic to": {
+  "remove": [],
+  "add": []
+ },
+ "Name something at a kids' birthday party": {
+  "remove": [
+   "banner",
+   "cake",
+   "gifts"
+  ],
+  "add": []
+ },
+ "Name a character, weapon, or room from the board game Clue": {
+  "remove": [],
+  "add": []
+ },
+ "Name a snowboarding or skateboarding trick": {
+  "remove": [
+   "fakie"
+  ],
+  "add": []
+ },
+ "Name an animal whose name starts with S": {
+  "remove": [],
+  "add": []
+ },
+ "Name a streaming service": {
+  "remove": [
+   "max"
+  ],
+  "add": []
+ },
+ "Name an English word ending in “-bound”": {
+  "remove": [
+   "weatherbound"
+  ],
+  "add": []
+ },
+ "Name a way to sign off a letter or email": {
+  "remove": [
+   "looking forward to hearing from you",
+   "thank you for your time"
+  ],
+  "add": []
+ },
+ "Name an English word containing “inter”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a word for a sports playing surface or venue floor": {
+  "remove": [
+   "arena",
+   "stadium",
+   "gym",
+   "pool",
+   "velodrome",
+   "ballpark",
+   "gymnasium",
+   "artificial turf",
+   "racetrack"
+  ],
+  "add": []
+ },
+ "Name a city in Florida": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “fire”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country whose national capital is on a river": {
+  "remove": [],
+  "add": []
+ },
+ "Name an animal native to the Australian outback": {
+  "remove": [
+   "red kangaroo",
+   "rock wallaby",
+   "euro"
+  ],
+  "add": []
+ },
+ "Name a character from the Kung Fu Panda movies": {
+  "remove": [],
+  "add": []
+ },
+ "Name a Halloween decoration": {
+  "remove": [
+   "frankenstein",
+   "haunted house",
+   "fake spider"
+  ],
+  "add": []
+ },
+ "Name a poker term": {
+  "remove": [
+   "dealer",
+   "buy-in"
+  ],
+  "add": []
+ },
+ "Name an event in track and field": {
+  "remove": [
+   "110 meter hurdles",
+   "400 meter hurdles",
+   "1500 meters",
+   "10000 meters",
+   "steeplechase",
+   "race walk",
+   "4x400 meter relay",
+   "mile",
+   "60 meters",
+   "60 meter hurdles"
+  ],
+  "add": []
+ },
+ "Name an English word ending in “-hood”": {
+  "remove": [
+   "neighbourhood"
+  ],
+  "add": []
+ },
+ "Name an Olivia Rodrigo song": {
+  "remove": [],
+  "add": []
+ },
+ "Name an animal whose name starts with P": {
+  "remove": [
+   "opossum"
+  ],
+  "add": []
+ },
+ "Name a classic small-talk topic": {
+  "remove": [
+   "weekend"
+  ],
+  "add": []
+ },
+ "Name a shade of gray": {
+  "remove": [
+   "slate",
+   "ash"
+  ],
+  "add": []
+ },
+ "Name something stuck on a fridge door": {
+  "remove": [
+   "christmas card",
+   "bills",
+   "tickets",
+   "notes"
+  ],
+  "add": []
+ },
+ "Name an English word containing “super”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a frozen dessert": {
+  "remove": [],
+  "add": []
+ },
+ "Name a cold-blooded animal": {
+  "remove": [],
+  "add": []
+ },
+ "Name an object that has a blade": {
+  "remove": [
+   "saber"
+  ],
+  "add": []
+ },
+ "Name a command people teach dogs": {
+  "remove": [],
+  "add": []
+ },
+ "Name a piece of bedding (mattresses and bed frames don't count)": {
+  "remove": [
+   "dust ruffle",
+   "throw blanket",
+   "duvet insert",
+   "bedsheet"
+  ],
+  "add": []
+ },
+ "Name a character from The Lion King": {
+  "remove": [],
+  "add": []
+ },
+ "Name a character from How I Met Your Mother": {
+  "remove": [
+   "zoey pierson"
+  ],
+  "add": []
+ },
+ "Name a cut of pork": {
+  "remove": [
+   "pork butt",
+   "pork sirloin",
+   "pork neck",
+   "pancetta",
+   "guanciale"
+  ],
+  "add": []
+ },
+ "Name a garnish for food or drinks": {
+  "remove": [
+   "sour cream"
+  ],
+  "add": []
+ },
+ "Name an English word containing “play”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a preposition (like “under”)": {
+  "remove": [],
+  "add": []
+ },
+ "Name an item from Mario Kart": {
+  "remove": [
+   "spiny shell"
+  ],
+  "add": []
+ },
+ "Name a combat sport": {
+  "remove": [
+   "pencak silat",
+   "mixed martial arts"
+  ],
+  "add": []
+ },
+ "Name an F1 team on the current grid": {
+  "remove": [],
+  "add": []
+ },
+ "Name a term used in ice hockey": {
+  "remove": [],
+  "add": []
+ },
+ "Name a country whose flag has a star on it": {
+  "remove": [],
+  "add": []
+ },
+ "Name a character from The Lord of the Rings or The Hobbit movies": {
+  "remove": [],
+  "add": []
+ },
+ "Name a Christmas movie": {
+  "remove": [],
+  "add": []
+ },
+ "Name an empire from history": {
+  "remove": [],
+  "add": []
+ }
+}

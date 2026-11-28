@@ -1,0 +1,479 @@
+{
+ "Name a conjunction (like “although”)": {
+  "remove": [
+   "even though",
+   "even if",
+   "so that",
+   "in order that",
+   "as if",
+   "as though",
+   "now that",
+   "rather than",
+   "provided that",
+   "as long as",
+   "as soon as",
+   "not only",
+   "in case",
+   "given that",
+   "only if",
+   "supposing",
+   "inasmuch as"
+  ],
+  "add": []
+ },
+ "Name a country that borders the Atlantic Ocean": {
+  "remove": [],
+  "add": []
+ },
+ "Name a foul or rule violation in soccer, basketball, American football, cricket, rugby or ice hockey": {
+  "remove": [
+   "offsides"
+  ],
+  "add": []
+ },
+ "Name a gray animal": {
+  "remove": [
+   "russian blue",
+   "weimaraner"
+  ],
+  "add": []
+ },
+ "Name a holy or venerated person in Christianity, Judaism, Islam, Buddhism, or Hinduism": {
+  "remove": [
+   "saint paul",
+   "saint francis of assisi",
+   "saint matthew",
+   "saint john the apostle",
+   "ali"
+  ],
+  "add": []
+ },
+ "Name an instrument found in a symphony orchestra": {
+  "remove": [
+   "english horn",
+   "tubular bells",
+   "tam-tam"
+  ],
+  "add": []
+ },
+ "Name a school supply": {
+  "remove": [
+   "lunch box"
+  ],
+  "add": []
+ },
+ "Name a type of astronomical object found in space (like an asteroid)": {
+  "remove": [
+   "oort cloud",
+   "natural satellite",
+   "trojan",
+   "centaur"
+  ],
+  "add": []
+ },
+ "Name a type of flour": {
+  "remove": [
+   "gram flour",
+   "glutinous rice flour",
+   "wholemeal flour",
+   "plain flour",
+   "self-raising flour",
+   "strong flour"
+  ],
+  "add": []
+ },
+ "Name an English word beginning with “para”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a food you'd buy at a state fair or carnival": {
+  "remove": [
+   "cheese curds",
+   "corn on the cob",
+   "mini donuts",
+   "pretzel"
+  ],
+  "add": []
+ },
+ "Name a musical artist or named musical ensemble that has performed during a Super Bowl halftime show (through Super Bowl LX)": {
+  "remove": [],
+  "add": []
+ },
+ "Name a piece of equipment worn or carried by an ice-hockey player or goalie": {
+  "remove": [
+   "hockey gloves",
+   "trapper",
+   "catching glove",
+   "leg pads",
+   "protective cup",
+   "knee pads",
+   "goalie pants",
+   "face mask"
+  ],
+  "add": []
+ },
+ "Name a protagonist of a Marvel Cinematic Universe movie": {
+  "remove": [
+   "mantis",
+   "nebula",
+   "hawkeye",
+   "scarlet witch",
+   "falcon",
+   "bucky barnes",
+   "red guardian",
+   "tony stark",
+   "steve rogers",
+   "peter parker"
+  ],
+  "add": []
+ },
+ "Name a symbol or shape that appears on a national flag (like a star)": {
+  "remove": [
+   "hammer",
+   "sickle",
+   "ashoka chakra"
+  ],
+  "add": []
+ },
+ "Name a word that starts with a silent K": {
+  "remove": [
+   "knives",
+   "knelt",
+   "knew",
+   "known",
+   "knowing"
+  ],
+  "add": []
+ },
+ "Name a named historical era or age": {
+  "remove": [
+   "baroque period",
+   "reconstruction era"
+  ],
+  "add": []
+ },
+ "Name a movie studio or production company": {
+  "remove": [
+   "dreamworks animation",
+   "dreamworks pictures",
+   "sony pictures animation",
+   "20th century fox"
+  ],
+  "add": []
+ },
+ "Name an English word containing “multi”": {
+  "remove": [
+   "multiplied",
+   "multiplying"
+  ],
+  "add": []
+ },
+ "Name a type of eyewear": {
+  "remove": [
+   "eyeglasses",
+   "spectacles",
+   "prescription glasses",
+   "cat-eye glasses",
+   "horn-rimmed glasses",
+   "rimless glasses",
+   "half-moon glasses",
+   "polarized sunglasses"
+  ],
+  "add": []
+ },
+ "Name a movie starring Scarlett Johansson": {
+  "remove": [],
+  "add": []
+ },
+ "Name an Ariana Grande song": {
+  "remove": [],
+  "add": []
+ },
+ "Name a team that played at UEFA Euro 2024": {
+  "remove": [],
+  "add": []
+ },
+ "Name something a cowboy wears or carries": {
+  "remove": [
+   "gun belt",
+   "lariat",
+   "stetson",
+   "neckerchief",
+   "pocket knife",
+   "flannel shirt",
+   "leather gloves",
+   "boots",
+   "hat",
+   "whip",
+   "pistol",
+   "bowie knife"
+  ],
+  "add": []
+ },
+ "Name an English word starting with “scr”": {
+  "remove": [
+   "scrambled"
+  ],
+  "add": []
+ },
+ "Name a Frank Ocean song": {
+  "remove": [],
+  "add": []
+ },
+ "Name a city that existed before AD 1500 (ancient or modern names count)": {
+  "remove": [
+   "istanbul"
+  ],
+  "add": []
+ },
+ "Name a character from SpongeBob SquarePants": {
+  "remove": [
+   "karen",
+   "dirty bubble",
+   "gary the snail",
+   "sheldon plankton",
+   "eugene krabs",
+   "flats the flounder",
+   "spongebob",
+   "patrick",
+   "squidward",
+   "sandy",
+   "pearl"
+  ],
+  "add": []
+ },
+ "Name a founding member of the United Nations in 1945 (former country names count)": {
+  "remove": [],
+  "add": []
+ },
+ "Name something you'd find in a hotel room": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English word containing “art”": {
+  "remove": [],
+  "add": []
+ },
+ "Name an English greeting (a way to say hi)": {
+  "remove": [
+   "wassup",
+   "hullo",
+   "hallo",
+   "hey y'all"
+  ],
+  "add": []
+ },
+ "Name something you might find in a backyard": {
+  "remove": [
+   "barbecue",
+   "garden hose",
+   "flowers"
+  ],
+  "add": []
+ },
+ "Name an English word containing “poly”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a casino or poker term": {
+  "remove": [],
+  "add": []
+ },
+ "Name a US government agency": {
+  "remove": [
+   "dhs"
+  ],
+  "add": []
+ },
+ "Name an English word containing “trans”": {
+  "remove": [
+   "transferable"
+  ],
+  "add": []
+ },
+ "Name an official document a person might have": {
+  "remove": [
+   "car title"
+  ],
+  "add": []
+ },
+ "Name a type of tennis shot": {
+  "remove": [
+   "smash",
+   "topspin",
+   "return of serve",
+   "overhead",
+   "backhand slice",
+   "two-handed backhand",
+   "one-handed backhand",
+   "swinging volley",
+   "chip",
+   "stop volley",
+   "drive"
+  ],
+  "add": []
+ },
+ "Name an English word containing “work”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a job at a restaurant": {
+  "remove": [
+   "waitress",
+   "hostess",
+   "busboy",
+   "expeditor",
+   "chef de cuisine"
+  ],
+  "add": []
+ },
+ "Name a classic American school-cafeteria lunch food": {
+  "remove": [
+   "mac and cheese",
+   "peanut butter and jelly",
+   "chicken sandwich",
+   "chicken patty",
+   "cookie"
+  ],
+  "add": []
+ },
+ "Name a term from Krillion": {
+  "remove": [
+   "puffer party"
+  ],
+  "add": []
+ },
+ "Name a compound word starting with “sun”": {
+  "remove": [
+   "sunbathing",
+   "sunburnt"
+  ],
+  "add": []
+ },
+ "Name a device that helps people with an impairment or disability": {
+  "remove": [
+   "screen reader",
+   "power wheelchair",
+   "video magnifier",
+   "walking stick"
+  ],
+  "add": []
+ },
+ "Name a car-racing movie": {
+  "remove": [
+   "talladega nights",
+   "le mans '66"
+  ],
+  "add": []
+ },
+ "Name a game or series played in organized esports tournaments": {
+  "remove": [
+   "starcraft ii",
+   "ea sports fc",
+   "mobile legends: bang bang",
+   "pubg mobile",
+   "counter-strike 2",
+   "super smash bros. melee",
+   "overwatch 2",
+   "street fighter 6"
+  ],
+  "add": []
+ },
+ "Name a slang word for money": {
+  "remove": [
+   "moola",
+   "skrilla",
+   "big bucks"
+  ],
+  "add": []
+ },
+ "Name a member of the British royal family from the past century": {
+  "remove": [
+   "prince andrew",
+   "wallis simpson",
+   "prince charles",
+   "queen elizabeth"
+  ],
+  "add": []
+ },
+ "Name an ice cream sundae topping": {
+  "remove": [
+   "marshmallow creme",
+   "mini marshmallows",
+   "crushed oreos",
+   "peanut butter sauce",
+   "salted caramel",
+   "jimmies"
+  ],
+  "add": []
+ },
+ "Name an English word containing “bio”": {
+  "remove": [],
+  "add": []
+ },
+ "Name a superhero who appears in an Avengers movie": {
+  "remove": [],
+  "add": []
+ },
+ "Name a tool or medium used for drawing": {
+  "remove": [
+   "soft pastel",
+   "sharpie",
+   "paper",
+   "sketchbook",
+   "sidewalk chalk",
+   "highlighter"
+  ],
+  "add": []
+ },
+ "Name a part of a medieval castle": {
+  "remove": [
+   "battlements",
+   "murder holes",
+   "postern gate",
+   "donjon",
+   "loophole",
+   "wall"
+  ],
+  "add": []
+ },
+ "Name a word that means angry": {
+  "remove": [
+   "resentful",
+   "hostile",
+   "agitated"
+  ],
+  "add": []
+ },
+ "Name an English word containing “dict”": {
+  "remove": [
+   "addicted",
+   "indicted",
+   "predicted",
+   "dictated",
+   "contradicted",
+   "dictionaries"
+  ],
+  "add": []
+ },
+ "Name an English word containing “spect”": {
+  "remove": [
+   "spectre",
+   "spectacles",
+   "suspected",
+   "expected"
+  ],
+  "add": []
+ },
+ "Name an animal known for jumping or leaping": {
+  "remove": [],
+  "add": []
+ },
+ "Name a piece of science lab equipment": {
+  "remove": [
+   "balance",
+   "ring stand"
+  ],
+  "add": []
+ }
+}

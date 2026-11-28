@@ -25,5 +25,9 @@ else console.log('No data/party.json (node party.js makes it): skipped party ans
 // Extra prompts (extra.js): data/classic.json, then the local unlicensed dump. The extension reads extra.json, not classic.json.
 require('./extra.js')();
 fs.rmSync(path.join(ext, 'data', 'classic.json'), { force: true });
+// Owner-only Test mode switch: on when the gitignored marker .cache/local-test-mode exists. extension/data/ is gitignored too.
+const local = path.join(ext, 'data', 'local.json');
+if (fs.existsSync(path.join(__dirname, '.cache', 'local-test-mode'))) fs.writeFileSync(local, JSON.stringify({ testMode: true }));
+else fs.rmSync(local, { force: true });
 const n = JSON.parse(fs.readFileSync(path.join(ext, 'data', 'index.json'), 'utf8')).length;
 console.log(`extension/ ready: ${n} prompts. Load it unpacked from chrome://extensions.`);

@@ -41,10 +41,13 @@ let stale = new WeakMap();                               // bubble -> its text w
 let learned = {};                                        // promptKey -> { norm(answer): [answer, tier] }
 let rejected = {}, bad = {};                             // promptKey -> { norm(answer): 1 } turned down / this prompt's
 let told = new Set();                                    // norm(answer): this prompt's party.json "wrong" answers
-const REJECT_MAX = 200;                                  // per prompt
+let alias = {};                                          // promptKey -> { norm(sent): norm(answer the game took it as) }
+let sentLast = null;                                     // { p, k, v, t, was }: your last send in party, and your bubble's verdict text then
+const REJECT_MAX = 200;                                  // per prompt (turned down, and aliases)
 let PARTY = null, partyAsked = false, party = null, more = []; // data/party.json / this prompt's entry and its untiered answers
 let EXTRA = [], POOL = [];                                // data/extra.json (local builds only) / INDEX and EXTRA: close prompts come from it
-let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false, contribute: false }; // from/to index LOW_TO_HIGH
+let settings = { auto: false, from: 3, to: 5, speed: 3, mistakes: false, queue: false, pretype: false, contribute: false, test: false }; // from/to index LOW_TO_HIGH
+let testMode = false;                                    // a local build (data/local.json testMode): shows the Test mode switch
 let outbox = {}, sent = {};                              // promptKey|norm(answer)|tier -> [prompt as shown, answer, tier] / 1
 let promptAt = 0;                                        // when the current question appeared
 let guess = null;                                        // a prompt with no list: { p, tiers: closest daily prompt's list (null while loading), bad: guesses turned down }
@@ -78,7 +81,7 @@ const rand = a => a[Math.floor(Math.random() * a.length)];
 let saveTimer = 0;
 const save = () => {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { if (alive()) chrome.storage.local.set({ settings, learned, outbox, sent, rejected }).catch(() => {}); }, 400);
+  saveTimer = setTimeout(() => { if (alive()) chrome.storage.local.set({ settings, learned, outbox, sent, rejected, alias }).catch(() => {}); }, 400);
 };
 
 // ---- panel ----
@@ -274,7 +277,7 @@ chrome.runtime.onMessage.addListener(msg => {
 });
 
 function showSettings() {
-  for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute']) $(id).checked = settings[id];
+  for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute', 'test']) if ($(id)) $(id).checked = settings[id];
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   $('from').value = settings.from; $('to').value = settings.to;
   $('range').style.setProperty('--lo', lo); $('range').style.setProperty('--hi', hi);
@@ -287,11 +290,12 @@ function showSettings() {
   status(settings.auto ? 'On.' : 'Off.');
 }
 const status = text => { if ($('st').textContent !== text) $('st').textContent = text; };
-for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute']) $(id).onchange = () => {
+const flip = id => () => {
   settings[id] = $(id).checked;
   if (id === 'contribute' && !settings.contribute) outbox = {}; // switched off: drop what hasn't gone out yet
   save(); showSettings();
 };
+for (const id of ['auto', 'pretype', 'mistakes', 'queue', 'contribute']) $(id).onchange = flip(id);
 for (const id of ['from', 'to', 'speed']) $(id).oninput = () => { settings[id] = +$(id).value; save(); showSettings(); };
 // Clicking a tier icon moves the nearer handle to it.
 root.querySelector('.ricons').onclick = ev => {
@@ -368,12 +372,23 @@ function learn(answer, tier) {
   }
   return true;
 }
-// Your answer turned down. Already said this round: a repeat. Otherwise wrong for this prompt (and reported, with
+// Said this round: answer k, and every answer the game turned into k before (alias). False if k already was.
+function markUsed(k, a) {
+  if (used.has(k)) return false;
+  used.set(k, a);
+  const al = alias[promptKey(promptText)] || {};
+  for (const x in al) if (al[x] === k && !used.has(x)) used.set(x, x);
+  return true;
+}
+// Your answer turned down. Already said this round: a repeat. Taken before (on any round, or as another answer by
+// autocorrect): a repeat too, under another name, so it's crossed off. Otherwise wrong for this prompt (and reported, with
 // Contribute on). The 2-word try of a long answer is ours, never wrong: the whole answer goes next. True if newly recorded.
 function reject(said) {
   const k = norm(said), pk = promptKey(promptText);
   if (longTry && longTry.p === promptText && k === longTry.sk) { longTry.down = true; return false; }
-  if (!k || !pk || used.has(k) || bad[k] || Object.keys(bad).length >= REJECT_MAX) return false;
+  if (!k || !pk || used.has(k) || bad[k]) return false;
+  if ((alias[pk] || {})[k] || (learned[pk] || {})[k] || (sheet && TIERS.some(t => sheet.keys[t.id].includes(k)))) return markUsed(k, said);
+  if (Object.keys(bad).length >= REJECT_MAX) return false;
   bad[k] = 1; rejected[pk] = bad; save();
   queue(pk + '|' + k + '|wrong', said, 'wrong');
   return true;
@@ -471,6 +486,25 @@ function readPrompt() {
     .filter(t => t.length > 3 && t.length < 200 && !/^new category$/i.test(t));
   return texts[texts.length - 1] || '';
 }
+// Your send in party (sender or Enter): kept with your bubble's verdict text then, an older one to tell from its own.
+function sentNow(v) {
+  const k = norm(v), b = document.querySelector('.pf-seat.me .pf-say:is(.ok, .rest, .bad)');
+  if (k && !(sentLast && sentLast.p === promptText && sentLast.k === k)) sentLast = { p: promptText, k, v, t: Date.now(), was: b ? b.textContent.trim() : '' };
+}
+// Your bubble took your last send as another answer k: the game autocorrected it ("bottle" shows "baby bottle"). The sent
+// one is said too, and remembered (alias) so it's crossed off whenever k is said on this prompt. Its key, or ''.
+function autocorrected(said, k) {
+  const s = sentLast;
+  if (!s || s.p !== promptText || said === s.was || Date.now() - s.t > 5000) return '';
+  sentLast = null;
+  if (s.k === k) return '';
+  const pk = promptKey(promptText), al = alias[pk] || (alias[pk] = {});
+  if (al[s.k] !== k && (al[s.k] || Object.keys(al).length < REJECT_MAX)) { al[s.k] = k; save(); }
+  if (bad[s.k]) { delete bad[s.k]; save(); }
+  told.delete(s.k);
+  if (!used.has(s.k)) used.set(s.k, s.v);
+  return s.k;
+}
 function scan() {
   const text = readPrompt();
   let changed = false;
@@ -493,15 +527,21 @@ function scan() {
     if (!k || stale.get(el) === said) continue;
     const tier = (el.style.getPropertyValue('--cc').match(/--tier-([a-z]+)/) || [])[1];
     if (tier && learn(said, tier)) changed = true;
-    if (!used.has(k)) { used.set(k, said); lockOn(k); changed = true; }
+    if (markUsed(k, said)) { lockOn(k); changed = true; }
     if (bad[k]) { delete bad[k]; save(); } // the game took it: it wasn't wrong after all
     told.delete(k);
-    // A long answer's 2-word try taken: that answer is done, the whole one never goes.
-    if (longTry && longTry.p === promptText && k === longTry.sk && !used.has(longTry.k)) used.set(longTry.k, longTry.a);
+    const x = el.closest('.pf-seat.me') ? autocorrected(said, k) : '';
+    if (x) changed = true;
+    // A long answer's 2-word try taken (as is or autocorrected): that answer is done, the whole one never goes.
+    if (longTry && longTry.p === promptText && (k === longTry.sk || x === longTry.sk) && !used.has(longTry.k)) used.set(longTry.k, longTry.a);
   }
   // Your bubble turned down what you last sent (you or auto answer): wrong unless already said (reject checks).
   const no = promptText && document.querySelector('.pf-seat.me .pf-say.bad');
-  if (no) { const said = no.textContent.trim(); if (stale.get(no) !== said && norm(said) === mine.k && reject(said)) changed = true; }
+  if (no) {
+    const said = no.textContent.trim();
+    if (sentLast && norm(said) === sentLast.k) sentLast = null;
+    if (stale.get(no) !== said && norm(said) === mine.k && reject(said)) changed = true;
+  }
   if (changed) draw();
 }
 // Your own answer: what's in the game's box when Enter goes down (yours or auto answer's). In party it counts once your
@@ -510,7 +550,7 @@ document.addEventListener('keydown', ev => {
   if (ev.key !== 'Enter' || !promptText || !ev.target.matches || !ev.target.matches('input.ds-input')) return;
   if (ev.isTrusted) takeOver('you sent an answer yourself');
   const said = ev.target.value.trim(), k = norm(said);
-  if (k && isParty()) mine = { k, t: Date.now() };
+  if (k && isParty()) { mine = { k, t: Date.now() }; sentNow(said); }
   else if (k && !used.has(k)) { used.set(k, said); setTimeout(draw, 0); }
 }, true);
 
@@ -553,6 +593,7 @@ function sender(box) {
   const stuck = v === typed.v && !!pending && v === typeText(pending) &&!used.has(norm(v)) && Date.now() - turnAt > 2000 && Date.now() - promptAt >= READ_MS;
   if (v !== toSend && !stuck) return;
   sendAt = Date.now() + 250;
+  if (isParty()) sentNow(v);
   box.dispatchEvent(new Event('input', { bubbles: true })); // the page may have dropped its copy of the value
   const b = sends++ % 2 ? sendBtn(box) : null;
   if (b) b.click(); else pressEnter(box);
@@ -599,7 +640,9 @@ async function clearBox(box, still = () => true) { while (box.value && still()) 
 
 // An unused answer: a tier from the range that has some left, common ones likelier (Plankton 6 to One in a Krillion 1),
 // then its first unused answer (lists are most said first).
+// Test mode (local build): on a party prompt, party.json's untiered answers first (most common first), so the game rates them.
 function chooseAnswer() {
+  if (testMode && settings.test && isParty() && sheet) { const a = more.find(a => free(norm(a)) && !inTiers(a)); if (a) return a; }
   const lo = Math.min(settings.from, settings.to), hi = Math.max(settings.from, settings.to);
   let pools = LOW_TO_HIGH.map((t, i) => ({ w: 6 - i, p: unused(t.id) })).slice(lo, hi + 1).filter(x => x.p.length);
   if (!pools.length) { // nothing left in range: the closest tier outside it, then party.json's untiered answers (most common first)
@@ -616,7 +659,8 @@ const nextAnswer = () => (longTry && longTry.p === promptText && longTry.down &&
 // Typed text is plain lowercase English letters: the game autocorrects close answers, and fancy characters can break typing.
 const ASCII = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-', 'ß': 'ss', 'æ': 'ae', 'œ': 'oe', 'ø': 'o', 'ł': 'l', 'đ': 'd' };
 const plain = s => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .replace(/[‘’“”–—ßæœøłđ]/g, c => ASCII[c]).replace(/[^\x00-\x7f]/g, '').trim();
+  .replace(/[‘’“”–—ßæœøłđ]/g, c => ASCII[c]).replace(/[^\x00-\x7f]/g, '')
+  .replace(/&/g, ' and ').replace(/[-:;,./\\()"!?]/g, ' ').replace(/\s+/g, ' ').trim(); // punctuation but ' typed as spaces
 // What to type for answer a. In party a long one (3+ words, over 18 characters) goes as its first 2 words first
 // (longTry); once those are turned down (reject), the whole answer.
 function typeText(a) {
@@ -922,10 +966,11 @@ document.addEventListener('input', ev => { if (ev.isTrusted && ev.target.matches
   }
 })();
 
-Promise.resolve().then(() => chrome.storage.local.get(['settings', 'learned', 'outbox', 'sent', 'rejected'])).then(s => {
+Promise.resolve().then(() => chrome.storage.local.get(['settings', 'learned', 'outbox', 'sent', 'rejected', 'alias'])).then(s => {
   if (s.settings) settings = { ...settings, ...s.settings };
   if (s.learned) learned = s.learned;
   if (s.rejected) rejected = s.rejected;
+  if (s.alias) alias = s.alias;
   if (s.outbox) outbox = s.outbox;
   if (s.sent) sent = s.sent;
   showSettings();
@@ -934,5 +979,12 @@ Promise.resolve().then(() => chrome.storage.local.get(['settings', 'learned', 'o
 }).then(([idx, ex]) => { INDEX = idx; EXTRA = ex || []; POOL = INDEX.concat(EXTRA); scan(); draw(); }, () => {
   body.innerHTML = '<p class="msg">Could not load the answer archive. Reload the extension.</p>';
 });
+// Test mode exists only in a local build: data/local.json (build.js writes it when .cache/local-test-mode exists).
+ask({ type: 'local' }).then(l => {
+  if (!l || l.testMode !== true) return;
+  testMode = true;
+  $('contribute').parentElement.insertAdjacentHTML('afterend', '<label class="sw">Test mode<input type="checkbox" role="switch" id="test"></label>');
+  $('test').onchange = flip('test'); $('test').checked = settings.test;
+}, () => {});
 draw();
 })();
