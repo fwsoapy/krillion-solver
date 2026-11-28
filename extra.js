@@ -8,6 +8,7 @@ const fs = require('fs'), path = require('path');
 const { TIERS, norm, promptKey } = require('./match.js');
 const DUMP = path.join(__dirname, '.cache', 'p0rt1k', 'krillion.sql');
 const CLASSIC = path.join(__dirname, 'data', 'classic.json');
+const GEN = path.join(__dirname, 'collector', 'generated-classic');
 // The dump's value 0..5 is a tier from plankton (0) up to krillion (5): TIERS backwards. Checked against the 275 prompts it
 // shares with the archive: 87.5% of shared answers agree (value 1 is rarely tooclever there; kept as the best fit anyway).
 const TIER = TIERS.map(t => t.id).reverse();
@@ -58,12 +59,23 @@ function extra() {
       if (inClassic.has(k)) fromDump += n;
     }
   }
-  const out = [...byKey.values()].filter(e => e.seen.size).map(({ t, tiers }) => ({ t, tiers }));
+  // collector/generated-classic/*.json ({ classic id: [answers] }): answers in no tier go in "more", like party.json's.
+  let fromGen = 0;
+  if (fs.existsSync(GEN)) for (const f of fs.readdirSync(GEN).filter(f => f.endsWith('.json')).sort())
+    for (const [id, list] of Object.entries(JSON.parse(fs.readFileSync(path.join(GEN, f), 'utf8')))) {
+      const e = byKey.get(classicKey.get(id));
+      if (!e || !Array.isArray(list)) continue;
+      for (const a of list) {
+        const n = norm(a);
+        if (n && !e.seen.has(n)) { e.seen.add(n); (e.more = e.more || []).push(String(a).trim()); fromGen++; }
+      }
+    }
+  const out = [...byKey.values()].filter(e => e.seen.size).map(({ t, tiers, more }) => more ? { t, tiers, more } : { t, tiers });
   const file = path.join(__dirname, 'extension', 'data', 'extra.json');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(out));
   const n = out.reduce((s, e) => s + Object.values(e.tiers).reduce((s, l) => s + l.length, 0), 0);
-  console.log(`extension/data/extra.json: ${out.length} extra prompts (${fromClassic} from classic.json, ${byKey.size - fromClassic} from the local dump only), ${n} answers (${fromDump} added from the dump to classic.json prompts).`);
+  console.log(`extension/data/extra.json: ${out.length} extra prompts (${fromClassic} from classic.json, ${byKey.size - fromClassic} from the local dump only), ${n} answers (${fromDump} added from the dump to classic.json prompts, ${fromGen} unrated from collector/generated-classic).`);
 }
 
 module.exports = extra;

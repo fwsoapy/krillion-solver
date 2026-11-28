@@ -454,7 +454,7 @@ body.addEventListener('click', ev => {
 // Use an archive prompt's answers (or an extra.json prompt's, already here) for what's on screen.
 async function pick(e) {
   const v = ++ver;
-  entry = e; sheet = e.tiers ? buildSheet(e.tiers) : null;
+  entry = e; more = e.more || []; sheet = e.tiers ? buildSheet(e.tiers) : null; // an extra.json prompt's untiered answers, as in matchParty
   draw();
   if (e.tiers) return;
   try {
